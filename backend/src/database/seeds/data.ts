@@ -370,6 +370,34 @@ export const PROMO_CODES = [
   },
 ] as const;
 
+/** Home promotions; `validUntil` always comes from the referenced promo code. */
+export const PROMOTIONS = [
+  {
+    id: "promo-bindee10-bkk-hkt",
+    title: "ลด 10% ทุกเส้นทาง บินภูเก็ตสบายกระเป๋า",
+    imageUrl: "/promotions/bindee10.jpg",
+    originCode: "BKK",
+    destinationCode: "HKT",
+    promoCode: "BINDEE10",
+  },
+  {
+    id: "promo-flydee100-bkk-cnx",
+    title: "ลด ฿100 ต่อท่าน บินเชียงใหม่",
+    imageUrl: "/promotions/flydee100.jpg",
+    originCode: "BKK",
+    destinationCode: "CNX",
+    promoCode: "FLYDEE100",
+  },
+  {
+    id: "promo-summer50-bkk-sin",
+    title: "โปรหน้าร้อน ลด ฿50 ต่อท่าน",
+    imageUrl: "/promotions/summer50.jpg",
+    originCode: "BKK",
+    destinationCode: "SIN",
+    promoCode: "SUMMER50",
+  },
+] as const;
+
 export const ADDON_PRICES = [
   {
     category: "BAGGAGE",
