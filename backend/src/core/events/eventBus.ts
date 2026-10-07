@@ -14,6 +14,13 @@ export const EVENT_NAMES = [
 
 export type EventName = (typeof EVENT_NAMES)[number];
 
+// TODO(booking, payment, ticketing specs): `payload` is untyped on purpose because this spec only
+// defines the event names. When each spec implements its events, replace `Record<string, unknown>`
+// with a payload map keyed by event name (e.g. `EventPayloads[N]`, a discriminated union of
+// `{ name, payload }`) and validate incoming jobs with Zod in BullmqEventBus before calling handlers.
+// Owners: booking -> BookingCreated, SeatsHeld, SeatHoldFailed, HoldExpired;
+// payment -> PaymentPending, PaymentCompleted, PaymentFailed, PaidAfterHoldExpired;
+// ticketing -> TicketIssued, TicketingFailed, ConfirmationSent.
 export interface DomainEvent {
   name: EventName;
   payload: Record<string, unknown>;
