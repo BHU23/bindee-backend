@@ -17,3 +17,6 @@ export async function resetInventory(prisma: PrismaClient): Promise<void> {
     'TRUNCATE "seat_hold_item", "seat_hold", "seat", "flight_fare", "flight", "route", "airport", "search_snapshot", "promo_code", "addon_price" CASCADE',
   );
 }
+
+export const SEED_NOW = new Date("2026-10-07T03:00:00.000Z");
+export const SEED_DAYS = 12;

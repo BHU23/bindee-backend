@@ -54,7 +54,11 @@ export class SearchExpiredError extends AppError {
 }
 
 export class InventoryUnavailableError extends AppError {
-  constructor(message = "Inventory is temporarily unavailable") {
+  constructor(
+    message = "Inventory is temporarily unavailable",
+    cause?: unknown,
+  ) {
     super(503, "INVENTORY_UNAVAILABLE", message);
+    this.cause = cause;
   }
 }
