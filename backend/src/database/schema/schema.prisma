@@ -13,3 +13,22 @@ model Example {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+enum IdempotencyStatus {
+  IN_PROGRESS
+  DONE
+}
+
+model IdempotencyRecord {
+  id          String            @id @default(uuid())
+  key         String
+  scope       String
+  requestHash String            @map("request_hash")
+  status      IdempotencyStatus @default(IN_PROGRESS)
+  response    Json?
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  @@unique([scope, key])
+  @@map("idempotency_record")
+}

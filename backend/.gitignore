@@ -2,3 +2,4 @@ dist
 .env
 /src/database/generated
 node_modules
+coverage
