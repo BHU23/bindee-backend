@@ -3,6 +3,7 @@ import type { Clock } from "../../../core/utils/clock.js";
 import { searchQuerySchema } from "../validators/searchQuery.js";
 import type { InventoryPort } from "../types/inventory.js";
 import { guard } from "./guard.js";
+import { reprice } from "./reprice.js";
 import { getFromPrices, searchFlights } from "./search.js";
 
 export interface InventoryDeps {
@@ -14,7 +15,7 @@ export interface InventoryDeps {
 
 export type ImplementedInventory = Pick<
   InventoryPort,
-  "searchFlights" | "getFromPrices"
+  "searchFlights" | "getFromPrices" | "reprice"
 >;
 
 export function createPrismaInventory(
@@ -27,6 +28,17 @@ export function createPrismaInventory(
     searchFlights: (query) =>
       guard(() =>
         searchFlights(deps.prisma, now(), searchQuerySchema.parse(query)),
+      ),
+    reprice: (input) =>
+      guard(() =>
+        reprice(
+          deps.prisma,
+          {
+            now: now(),
+            forcePriceChangeFlight: deps.forcePriceChangeFlight,
+          },
+          input,
+        ),
       ),
     getFromPrices: (input) =>
       guard(() => getFromPrices(deps.prisma, now(), input)),

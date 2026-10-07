@@ -9,6 +9,7 @@ import type {
   SearchQuery,
   SearchResult,
 } from "../types/inventory.js";
+import type { SnapshotPrices } from "./snapshot.js";
 import { countAvailableSeats } from "./availability.js";
 import {
   liteAdultPrice,
@@ -18,12 +19,6 @@ import {
 } from "./flightOptions.js";
 
 export const CALENDAR_DAYS_EACH_SIDE = 3;
-
-interface SnapshotPrices {
-  [flightId: string]: {
-    [family: string]: { perAdult: number; perInfant: number };
-  };
-}
 
 async function flightsBetween(
   prisma: PrismaClient,
