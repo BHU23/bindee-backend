@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 import { ManualClock } from "../../../src/core/utils/clock.js";
 import { runSeed } from "../../../src/database/seeds/runSeed.js";
 import { createPrismaInventory } from "../../../src/modules/inventory/repositories/prismaInventory.js";
@@ -87,7 +88,7 @@ describe("AC-INV-02 search BKK→CNX", () => {
   it("When the input is invalid, should reject it", async () => {
     await expect(
       inventory.searchFlights(query({ adults: 0 })),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(ZodError);
   });
 });
 

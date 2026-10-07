@@ -3,8 +3,10 @@ import type { Clock } from "../../../core/utils/clock.js";
 import { searchQuerySchema } from "../validators/searchQuery.js";
 import type { InventoryPort } from "../types/inventory.js";
 import { guard } from "./guard.js";
+import { extendOrRehold, holdSeats, releaseSeats } from "./holds.js";
 import { reprice } from "./reprice.js";
 import { getFromPrices, searchFlights } from "./search.js";
+import { getSeatMap } from "./seatMap.js";
 
 export interface InventoryDeps {
   prisma: PrismaClient;
@@ -15,7 +17,13 @@ export interface InventoryDeps {
 
 export type ImplementedInventory = Pick<
   InventoryPort,
-  "searchFlights" | "getFromPrices" | "reprice"
+  | "searchFlights"
+  | "getFromPrices"
+  | "reprice"
+  | "getSeatMap"
+  | "holdSeats"
+  | "releaseSeats"
+  | "extendOrRehold"
 >;
 
 export function createPrismaInventory(
@@ -40,6 +48,13 @@ export function createPrismaInventory(
           input,
         ),
       ),
+    getSeatMap: (flightId) =>
+      guard(() => getSeatMap(deps.prisma, now(), flightId)),
+    holdSeats: (request) => guard(() => holdSeats(deps.prisma, now(), request)),
+    releaseSeats: (holdId) =>
+      guard(() => releaseSeats(deps.prisma, now(), holdId)),
+    extendOrRehold: (holdId) =>
+      guard(() => extendOrRehold(deps.prisma, now(), holdId)),
     getFromPrices: (input) =>
       guard(() => getFromPrices(deps.prisma, now(), input)),
   };
