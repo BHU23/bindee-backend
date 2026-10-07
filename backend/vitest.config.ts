@@ -1,5 +1,24 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  test: { include: ["tests/**/*.test.ts"] },
+  test: {
+    include: ["tests/**/*.test.ts"],
+    env: {
+      DATABASE_URL: "postgresql://test:test@localhost:5432/test",
+      REDIS_URL: "redis://localhost:6379",
+    },
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      exclude: [
+        "src/database/generated/**",
+        "**/*.config.*",
+        "tests/**",
+        "**/index.ts",
+        "src/server.ts",
+        "**/*.d.ts",
+      ],
+      thresholds: { statements: 90, branches: 90, functions: 90, lines: 90 },
+    },
+  },
 });
