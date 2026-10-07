@@ -32,3 +32,171 @@ model IdempotencyRecord {
   @@unique([scope, key])
   @@map("idempotency_record")
 }
+
+enum FareFamily {
+  LITE
+  VALUE
+  FLEX
+}
+
+enum SeatKind {
+  WINDOW
+  MIDDLE
+  AISLE
+  EXIT
+}
+
+enum SeatStatus {
+  AVAILABLE
+  SOLD
+}
+
+enum PromoDiscountType {
+  PERCENT
+  FIXED_PER_PAX
+}
+
+model Airport {
+  code      String   @id
+  name      String
+  city      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  origins      Route[] @relation("RouteOrigin")
+  destinations Route[] @relation("RouteDestination")
+
+  @@map("airport")
+}
+
+model Route {
+  id              String   @id @default(uuid())
+  originCode      String   @map("origin_code")
+  destinationCode String   @map("destination_code")
+  international   Boolean  @default(false)
+  durationMinutes Int      @map("duration_minutes")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  origin      Airport  @relation("RouteOrigin", fields: [originCode], references: [code])
+  destination Airport  @relation("RouteDestination", fields: [destinationCode], references: [code])
+  flights     Flight[]
+
+  @@unique([originCode, destinationCode])
+  @@map("route")
+}
+
+model Flight {
+  id          String   @id @default(uuid())
+  flightNo    String   @map("flight_no")
+  routeId     String   @map("route_id")
+  departAt    DateTime @map("depart_at")
+  arriveAt    DateTime @map("arrive_at")
+  aircraft    String
+  priceFactor Decimal  @map("price_factor") @db.Decimal(4, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  route Route        @relation(fields: [routeId], references: [id])
+  fares FlightFare[]
+  seats Seat[]
+
+  @@unique([flightNo, departAt])
+  @@index([routeId, departAt])
+  @@map("flight")
+}
+
+model FlightFare {
+  id             String     @id @default(uuid())
+  flightId       String     @map("flight_id")
+  family         FareFamily
+  basePrice      Int        @map("base_price")
+  airportTax     Int        @map("airport_tax")
+  fuelSurcharge  Int        @map("fuel_surcharge")
+  serviceFee     Int        @map("service_fee")
+  cabinBagKg     Int        @map("cabin_bag_kg")
+  checkedBagKg   Int        @map("checked_bag_kg")
+  changeAllowed  Boolean    @map("change_allowed")
+  changeFee      Int        @map("change_fee")
+  refundAllowed  Boolean    @map("refund_allowed")
+  refundFee      Int        @map("refund_fee")
+  seatIncluded   Boolean    @map("seat_included")
+  repriceTrigger Boolean    @default(false) @map("reprice_trigger")
+
+  flight Flight @relation(fields: [flightId], references: [id], onDelete: Cascade)
+
+  @@unique([flightId, family])
+  @@map("flight_fare")
+}
+
+model Seat {
+  id       String     @id @default(uuid())
+  flightId String     @map("flight_id")
+  row      Int
+  letter   String
+  kind     SeatKind
+  price    Int
+  status   SeatStatus @default(AVAILABLE)
+
+  flight    Flight         @relation(fields: [flightId], references: [id], onDelete: Cascade)
+  holdItems SeatHoldItem[]
+
+  @@unique([flightId, row, letter])
+  @@index([flightId, status])
+  @@map("seat")
+}
+
+model SeatHold {
+  id         String    @id @default(uuid())
+  bookingRef String    @map("booking_ref")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  expiresAt  DateTime  @map("expires_at")
+  releasedAt DateTime? @map("released_at")
+
+  items SeatHoldItem[]
+
+  @@index([expiresAt])
+  @@map("seat_hold")
+}
+
+model SeatHoldItem {
+  id       String @id @default(uuid())
+  holdId   String @map("hold_id")
+  seatId   String @map("seat_id")
+  paxIndex Int?   @map("pax_index")
+
+  hold SeatHold @relation(fields: [holdId], references: [id], onDelete: Cascade)
+  seat Seat     @relation(fields: [seatId], references: [id], onDelete: Cascade)
+
+  @@unique([holdId, seatId])
+  @@index([seatId])
+  @@map("seat_hold_item")
+}
+
+model SearchSnapshot {
+  id        String   @id @default(uuid())
+  createdAt DateTime @map("created_at")
+  data      Json
+
+  @@map("search_snapshot")
+}
+
+model PromoCode {
+  code         String            @id
+  discountType PromoDiscountType @map("discount_type")
+  value        Int
+  validUntil   DateTime          @map("valid_until")
+  minBaseFare  Int               @map("min_base_fare")
+  domesticOnly Boolean           @default(false) @map("domestic_only")
+
+  @@map("promo_code")
+}
+
+model AddonPrice {
+  id                 String @id @default(uuid())
+  category           String
+  code               String
+  label              String
+  priceDomestic      Int    @map("price_domestic")
+  priceInternational Int    @map("price_international")
+
+  @@unique([category, code])
+  @@map("addon_price")
+}
