@@ -186,7 +186,39 @@ model PromoCode {
   minBaseFare  Int               @map("min_base_fare")
   domesticOnly Boolean           @default(false) @map("domestic_only")
 
+  promotions Promotion[]
+
   @@map("promo_code")
+}
+
+model RecentSearch {
+  id         String   @id @default(uuid())
+  sessionId  String   @map("session_id")
+  queryKey   String   @map("query_key")
+  payload    Json
+  searchedAt DateTime @map("searched_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([sessionId, queryKey])
+  @@index([sessionId, searchedAt(sort: Desc)])
+  @@map("recent_search")
+}
+
+model Promotion {
+  id              String   @id
+  title           String
+  imageUrl        String   @map("image_url")
+  originCode      String   @map("origin_code")
+  destinationCode String   @map("destination_code")
+  promoCode       String   @map("promo_code")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  promo PromoCode @relation(fields: [promoCode], references: [code])
+
+  @@index([promoCode])
+  @@map("promotion")
 }
 
 model AddonPrice {

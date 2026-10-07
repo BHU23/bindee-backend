@@ -14,7 +14,7 @@ export function createTestPrisma(): PrismaClient {
 /** Empties every inventory table so a test file starts from a known state. */
 export async function resetInventory(prisma: PrismaClient): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "seat_hold_item", "seat_hold", "seat", "flight_fare", "flight", "route", "airport", "search_snapshot", "promo_code", "addon_price" CASCADE',
+    'TRUNCATE "seat_hold_item", "seat_hold", "seat", "flight_fare", "flight", "route", "airport", "search_snapshot", "recent_search", "promotion", "promo_code", "addon_price" CASCADE',
   );
 }
 

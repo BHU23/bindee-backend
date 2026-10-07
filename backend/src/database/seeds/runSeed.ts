@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/database/generated/client.js";
 import {
   ADDON_PRICES,
   AIRPORTS,
+  PROMOTIONS,
   PROMO_CODES,
   SEED_DAYS,
   bangkokMidnight,
@@ -161,6 +162,13 @@ export async function runSeed(
       where: { code: promo.code },
       update: {},
       create: promo,
+    });
+  }
+  for (const promotion of PROMOTIONS) {
+    await prisma.promotion.upsert({
+      where: { id: promotion.id },
+      update: {},
+      create: promotion,
     });
   }
   for (const addon of ADDON_PRICES) {
