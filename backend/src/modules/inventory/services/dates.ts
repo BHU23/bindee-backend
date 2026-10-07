@@ -11,3 +11,8 @@ export function addDays(date: string, days: number): string {
   const shifted = new Date(`${date}T00:00:00Z`).getTime() + days * DAY_MS;
   return new Date(shifted).toISOString().slice(0, 10);
 }
+
+/** Whole days since 1970-01-01 of the Bangkok calendar day containing the instant. */
+export function bangkokDayIndex(instant: Date): number {
+  return Math.floor((instant.getTime() + 7 * 3_600_000) / DAY_MS);
+}
