@@ -7,7 +7,7 @@ import {
   buildSeatPlans,
   priceFactorForHour,
   ROUTE_CONFIGS,
-} from "../../../src/database/seeds/data.js";
+} from "@/database/seeds/data.js";
 
 const NOW = new Date("2026-10-07T03:00:00.000Z");
 

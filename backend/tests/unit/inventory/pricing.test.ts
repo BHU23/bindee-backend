@@ -4,7 +4,7 @@ import {
   infantPrice,
   priceParty,
   type FarePricing,
-} from "../../../src/modules/inventory/services/pricing.js";
+} from "@/modules/inventory/services/pricing.js";
 
 const CNX_LITE: FarePricing = {
   basePrice: 690,

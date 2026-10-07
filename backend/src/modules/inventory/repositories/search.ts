@@ -1,6 +1,9 @@
-import type { PrismaClient } from "../../../database/generated/client.js";
-import { addDays, bangkokDayRange } from "../services/dates.js";
-import { priceParty } from "../services/pricing.js";
+import type { PrismaClient } from "@/database/generated/client.js";
+import {
+  addDays,
+  bangkokDayRange,
+} from "@/modules/inventory/services/dates.js";
+import { priceParty } from "@/modules/inventory/services/pricing.js";
 import type {
   CalendarDay,
   FromPrice,
@@ -8,7 +11,7 @@ import type {
   RoutePair,
   SearchQuery,
   SearchResult,
-} from "../types/inventory.js";
+} from "@/modules/inventory/types/inventory.js";
 import type { SnapshotPrices } from "./snapshot.js";
 import { countAvailableSeats } from "./availability.js";
 import {

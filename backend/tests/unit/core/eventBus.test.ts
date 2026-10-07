@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ManualClock } from "../../../src/core/utils/clock.js";
-import { InMemoryEventBus } from "../../../src/core/events/inMemoryEventBus.js";
-import type { DomainEvent } from "../../../src/core/events/eventBus.js";
+import { ManualClock } from "@/core/utils/clock.js";
+import { InMemoryEventBus } from "@/core/events/inMemoryEventBus.js";
+import type { DomainEvent } from "@/core/events/eventBus.js";
 
 const event: DomainEvent = {
   name: "PaymentCompleted",

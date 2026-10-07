@@ -1,6 +1,9 @@
-import { NotFoundError } from "../../../core/errors/index.js";
-import type { PrismaClient } from "../../../database/generated/client.js";
-import type { SeatMap, SeatStatus } from "../types/inventory.js";
+import { NotFoundError } from "@/core/errors/index.js";
+import type { PrismaClient } from "@/database/generated/client.js";
+import type {
+  SeatMap,
+  SeatStatus,
+} from "@/modules/inventory/types/inventory.js";
 import { liveHold } from "./holds.js";
 
 export async function getSeatMap(

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../../../database/generated/client.js";
+import type { PrismaClient } from "@/database/generated/client.js";
 
 interface AvailabilityRow {
   flight_id: string;

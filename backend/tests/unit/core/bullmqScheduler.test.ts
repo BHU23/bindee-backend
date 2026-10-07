@@ -23,8 +23,7 @@ vi.mock("bullmq", () => ({
   }),
 }));
 
-const { BullmqScheduler } =
-  await import("../../../src/core/jobs/bullmqScheduler.js");
+const { BullmqScheduler } = await import("@/core/jobs/bullmqScheduler.js");
 
 describe("BullmqScheduler (bullmq mocked; restart persistence NOT VERIFIED in CI)", () => {
   beforeEach(() => {

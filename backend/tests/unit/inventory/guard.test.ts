@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { ManualClock } from "../../../src/core/utils/clock.js";
-import { NotFoundError } from "../../../src/core/errors/index.js";
-import { guard } from "../../../src/modules/inventory/repositories/guard.js";
-import { createPrismaInventory } from "../../../src/modules/inventory/repositories/prismaInventory.js";
-import type { PrismaClient } from "../../../src/database/generated/client.js";
+import { ManualClock } from "@/core/utils/clock.js";
+import { NotFoundError } from "@/core/errors/index.js";
+import { guard } from "@/modules/inventory/repositories/guard.js";
+import { createPrismaInventory } from "@/modules/inventory/repositories/prismaInventory.js";
+import type { PrismaClient } from "@/database/generated/client.js";
 
 describe("INVENTORY_UNAVAILABLE on dependency failure", () => {
   it("When the database throws, should surface INVENTORY_UNAVAILABLE (503) with the cause", async () => {

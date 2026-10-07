@@ -1,7 +1,7 @@
-import { NotFoundError } from "../../../core/errors/index.js";
-import type { PrismaClient } from "../../../database/generated/client.js";
-import { bangkokDayIndex } from "../services/dates.js";
-import type { FlightOption } from "../types/inventory.js";
+import { NotFoundError } from "@/core/errors/index.js";
+import type { PrismaClient } from "@/database/generated/client.js";
+import { bangkokDayIndex } from "@/modules/inventory/services/dates.js";
+import type { FlightOption } from "@/modules/inventory/types/inventory.js";
 import { countAvailableSeats } from "./availability.js";
 import { toFlightOption } from "./flightOptions.js";
 

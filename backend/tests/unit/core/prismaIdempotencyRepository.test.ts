@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createPrismaIdempotencyRepository } from "../../../src/core/repositories/prismaIdempotencyRepository.js";
+import { createPrismaIdempotencyRepository } from "@/core/repositories/prismaIdempotencyRepository.js";
 
 function setup(count = 1) {
   const delegate = {

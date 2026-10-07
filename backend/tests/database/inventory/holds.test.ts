@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { ManualClock } from "../../../src/core/utils/clock.js";
-import { runSeed } from "../../../src/database/seeds/runSeed.js";
-import { createPrismaInventory } from "../../../src/modules/inventory/repositories/prismaInventory.js";
-import type { HoldRequest } from "../../../src/modules/inventory/types/inventory.js";
+import { ManualClock } from "@/core/utils/clock.js";
+import { runSeed } from "@/database/seeds/runSeed.js";
+import { createPrismaInventory } from "@/modules/inventory/repositories/prismaInventory.js";
+import type { HoldRequest } from "@/modules/inventory/types/inventory.js";
 import {
   SEED_DAYS,
   SEED_NOW,

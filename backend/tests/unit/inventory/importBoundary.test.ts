@@ -54,10 +54,19 @@ describe("AC-INV-01 callers depend only on InventoryPort", () => {
     expect(await lint(types, "src/modules/booking/y.ts")).toHaveLength(1);
   });
 
+  it("When a module imports inventory internals through the @ alias, should be flagged too", async () => {
+    const alias =
+      'import { searchFlights } from "@/modules/inventory/repositories/search.js";\nvoid searchFlights;\n';
+    expect(await lint(alias, "src/modules/booking/z.ts")).toHaveLength(1);
+  });
+
   it("When a module imports the inventory barrel, should pass lint", async () => {
     const barrel =
       'import type { InventoryPort } from "../inventory/index.js";\nexport type T = InventoryPort;\n';
     expect(await lint(barrel, "src/modules/booking/x.ts")).toHaveLength(0);
+    const aliased =
+      'import type { InventoryPort } from "@/modules/inventory/index.js";\nexport type T = InventoryPort;\n';
+    expect(await lint(aliased, "src/modules/booking/w.ts")).toHaveLength(0);
   });
 
   it("When scanning src outside inventory, should find no access to inventory tables", () => {

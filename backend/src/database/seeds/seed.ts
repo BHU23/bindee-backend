@@ -1,4 +1,4 @@
-import { prisma } from "../client/prisma.js";
+import { prisma } from "@/database/client/prisma.js";
 import { runSeed } from "./runSeed.js";
 
 try {

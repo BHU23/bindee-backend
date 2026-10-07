@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DomainEvent } from "../../src/core/events/eventBus.js";
-import { InMemoryEventBus } from "../../src/core/events/inMemoryEventBus.js";
+import type { DomainEvent } from "@/core/events/eventBus.js";
+import { InMemoryEventBus } from "@/core/events/inMemoryEventBus.js";
 import {
   createReconcilePaidJob,
   type PaidBookingReader,
-} from "../../src/modules/booking/index.js";
+} from "@/modules/booking/index.js";
 
 describe("reconcile-paid", () => {
   describe("AC-FND-10 PAID booking without tickets", () => {

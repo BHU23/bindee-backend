@@ -1,4 +1,4 @@
-import type { PaxCounts } from "../types/inventory.js";
+import type { PaxCounts } from "@/modules/inventory/types/inventory.js";
 
 export const INFANT_BASE_RATIO = 0.1;
 

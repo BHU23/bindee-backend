@@ -1,7 +1,7 @@
-import type { PrismaClient } from "../../../database/generated/client.js";
-import type { Clock } from "../../../core/utils/clock.js";
-import { searchQuerySchema } from "../validators/searchQuery.js";
-import type { InventoryPort } from "../types/inventory.js";
+import type { PrismaClient } from "@/database/generated/client.js";
+import type { Clock } from "@/core/utils/clock.js";
+import { searchQuerySchema } from "@/modules/inventory/validators/searchQuery.js";
+import type { InventoryPort } from "@/modules/inventory/types/inventory.js";
 import { guard } from "./guard.js";
 import { findAlternatives } from "./alternatives.js";
 import { extendOrRehold, holdSeats, releaseSeats } from "./holds.js";

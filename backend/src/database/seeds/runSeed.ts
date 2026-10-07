@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../generated/client.js";
+import type { PrismaClient } from "@/database/generated/client.js";
 import {
   ADDON_PRICES,
   AIRPORTS,

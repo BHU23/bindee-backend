@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { ValidationError, type ErrorFields } from "../errors/index.js";
+import { ValidationError, type ErrorFields } from "@/core/errors/index.js";
 
 export function zodFields(error: z.ZodError): ErrorFields {
   const fields: ErrorFields = {};

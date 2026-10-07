@@ -1,8 +1,5 @@
 import { ZodError } from "zod";
-import {
-  AppError,
-  InventoryUnavailableError,
-} from "../../../core/errors/index.js";
+import { AppError, InventoryUnavailableError } from "@/core/errors/index.js";
 
 /** Lets domain and validation errors through and turns infrastructure failures into INVENTORY_UNAVAILABLE. */
 export async function guard<T>(work: () => Promise<T>): Promise<T> {

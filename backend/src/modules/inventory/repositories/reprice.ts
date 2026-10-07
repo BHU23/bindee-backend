@@ -1,10 +1,10 @@
-import {
-  NotFoundError,
-  SearchExpiredError,
-} from "../../../core/errors/index.js";
-import type { PrismaClient } from "../../../database/generated/client.js";
-import { priceParty } from "../services/pricing.js";
-import type { RepriceInput, RepriceResult } from "../types/inventory.js";
+import { NotFoundError, SearchExpiredError } from "@/core/errors/index.js";
+import type { PrismaClient } from "@/database/generated/client.js";
+import { priceParty } from "@/modules/inventory/services/pricing.js";
+import type {
+  RepriceInput,
+  RepriceResult,
+} from "@/modules/inventory/types/inventory.js";
 import { countAvailableSeats } from "./availability.js";
 import { seatsNeeded } from "./flightOptions.js";
 import { SNAPSHOT_TTL_MS, type SnapshotData } from "./snapshot.js";

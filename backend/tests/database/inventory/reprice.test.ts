@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { ManualClock } from "../../../src/core/utils/clock.js";
-import { runSeed } from "../../../src/database/seeds/runSeed.js";
-import { createPrismaInventory } from "../../../src/modules/inventory/repositories/prismaInventory.js";
-import { SNAPSHOT_TTL_MS } from "../../../src/modules/inventory/repositories/snapshot.js";
+import { ManualClock } from "@/core/utils/clock.js";
+import { runSeed } from "@/database/seeds/runSeed.js";
+import { createPrismaInventory } from "@/modules/inventory/repositories/prismaInventory.js";
+import { SNAPSHOT_TTL_MS } from "@/modules/inventory/repositories/snapshot.js";
 import type {
   FareFamily,
   PaxCounts,
   SearchQuery,
-} from "../../../src/modules/inventory/types/inventory.js";
+} from "@/modules/inventory/types/inventory.js";
 import {
   SEED_DAYS,
   SEED_NOW,

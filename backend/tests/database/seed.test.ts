@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { runSeed } from "../../src/database/seeds/runSeed.js";
+import { runSeed } from "@/database/seeds/runSeed.js";
 import { createTestPrisma, resetInventory } from "./testDb.js";
 
 const prisma = createTestPrisma();

@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   BOOKING_STATUSES,
   type BookingStatus,
-} from "../../../src/modules/booking/index.js";
+} from "@/modules/booking/index.js";
 import {
   canTransition,
   transition,
-} from "../../../src/modules/booking/services/bookingStateMachine.js";
+} from "@/modules/booking/services/bookingStateMachine.js";
 
 const LEGAL: [BookingStatus, BookingStatus][] = [
   ["DRAFT", "PENDING_PAYMENT"],

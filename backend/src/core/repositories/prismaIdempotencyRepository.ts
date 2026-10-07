@@ -1,8 +1,8 @@
-import type { Prisma } from "../../database/generated/client.js";
+import type { Prisma } from "@/database/generated/client.js";
 import type {
   IdempotencyRecord,
   IdempotencyRepository,
-} from "../utils/idempotency.js";
+} from "@/core/utils/idempotency.js";
 
 interface IdempotencyDelegate {
   createMany(args: {

@@ -3,7 +3,7 @@ import {
   InventoryUnavailableError,
   SearchExpiredError,
   SeatUnavailableError,
-} from "../../../src/core/errors/index.js";
+} from "@/core/errors/index.js";
 
 describe("inventory errors", () => {
   it("When SeatUnavailableError is created, should be 409 SEAT_UNAVAILABLE", () => {

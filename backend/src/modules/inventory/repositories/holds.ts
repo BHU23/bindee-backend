@@ -2,16 +2,16 @@ import {
   NotFoundError,
   SeatUnavailableError,
   ValidationError,
-} from "../../../core/errors/index.js";
-import type {
-  Prisma,
-  PrismaClient,
-} from "../../../database/generated/client.js";
+} from "@/core/errors/index.js";
+import type { Prisma, PrismaClient } from "@/database/generated/client.js";
 import {
   holdRequestSchema,
   SEAT_NO_PATTERN,
-} from "../validators/holdRequest.js";
-import type { HoldRequest, HoldResult } from "../types/inventory.js";
+} from "@/modules/inventory/validators/holdRequest.js";
+import type {
+  HoldRequest,
+  HoldResult,
+} from "@/modules/inventory/types/inventory.js";
 
 type Tx = Prisma.TransactionClient;
 

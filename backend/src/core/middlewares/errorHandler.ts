@@ -5,8 +5,8 @@ import type {
   FastifyRequest,
 } from "fastify";
 import { ZodError } from "zod";
-import { AppError } from "../errors/index.js";
-import { zodFields } from "../utils/validate.js";
+import { AppError } from "@/core/errors/index.js";
+import { zodFields } from "@/core/utils/validate.js";
 
 interface ErrorBody {
   error: { code: string; message: string; fields?: Record<string, string> };

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { ManualClock } from "../../../src/core/utils/clock.js";
-import { runSeed } from "../../../src/database/seeds/runSeed.js";
-import { createPrismaInventory } from "../../../src/modules/inventory/repositories/prismaInventory.js";
+import { ManualClock } from "@/core/utils/clock.js";
+import { runSeed } from "@/database/seeds/runSeed.js";
+import { createPrismaInventory } from "@/modules/inventory/repositories/prismaInventory.js";
 import {
   SEED_DAYS,
   SEED_NOW,

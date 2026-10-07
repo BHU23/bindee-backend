@@ -1,5 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../src/database/generated/client.js";
+import { PrismaClient } from "@/database/generated/client.js";
 
 export const TEST_DATABASE_URL =
   process.env["TEST_DATABASE_URL"] ??

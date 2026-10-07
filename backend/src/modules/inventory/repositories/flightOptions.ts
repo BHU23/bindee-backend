@@ -1,10 +1,10 @@
-import type { Prisma } from "../../../database/generated/client.js";
-import { priceParty } from "../services/pricing.js";
+import type { Prisma } from "@/database/generated/client.js";
+import { priceParty } from "@/modules/inventory/services/pricing.js";
 import type {
   FareOption,
   FlightOption,
   PaxCounts,
-} from "../types/inventory.js";
+} from "@/modules/inventory/types/inventory.js";
 
 export type FlightWithFares = Prisma.FlightGetPayload<{
   include: { route: true; fares: true };
