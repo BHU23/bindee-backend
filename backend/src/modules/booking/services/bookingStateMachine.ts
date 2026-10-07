@@ -1,5 +1,5 @@
-import { InvalidStateTransitionError } from "../../../core/errors/index.js";
-import type { BookingStatus } from "../types/bookingStatus.js";
+import { InvalidStateTransitionError } from "@/core/errors/index.js";
+import type { BookingStatus } from "@/modules/booking/types/bookingStatus.js";
 
 const TRANSITIONS: Record<BookingStatus, readonly BookingStatus[]> = {
   DRAFT: ["PENDING_PAYMENT", "SEAT_HOLD_FAILED"],

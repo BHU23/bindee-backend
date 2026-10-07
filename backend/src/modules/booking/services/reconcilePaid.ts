@@ -1,5 +1,5 @@
-import type { EventBus } from "../../../core/events/eventBus.js";
-import type { JobFn } from "../../../core/jobs/scheduler.js";
+import type { EventBus } from "@/core/events/eventBus.js";
+import type { JobFn } from "@/core/jobs/scheduler.js";
 
 export const RECONCILE_PAID_AFTER_MS = 60_000;
 

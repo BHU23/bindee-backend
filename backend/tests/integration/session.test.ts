@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildApp } from "../../src/app.js";
+import { buildApp } from "@/app.js";
 
 async function buildTestApp() {
   const app = await buildApp({ logger: false });

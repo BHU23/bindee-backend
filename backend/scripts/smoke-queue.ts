@@ -1,8 +1,8 @@
 // Manual smoke test against a real Redis (run by hand, not part of CI): `pnpm smoke:queue`.
 import { Redis } from "ioredis";
-import { BullmqEventBus } from "../src/core/events/bullmqEventBus.js";
-import { BullmqScheduler } from "../src/core/jobs/bullmqScheduler.js";
-import { parseEnv } from "../src/config/env.js";
+import { BullmqEventBus } from "@/core/events/bullmqEventBus.js";
+import { BullmqScheduler } from "@/core/jobs/bullmqScheduler.js";
+import { parseEnv } from "@/config/env.js";
 
 const env = parseEnv(process.env);
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });

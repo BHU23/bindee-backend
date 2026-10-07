@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { ValidationError } from "../errors/index.js";
+import { ValidationError } from "@/core/errors/index.js";
 
 declare module "fastify" {
   interface FastifyRequest {

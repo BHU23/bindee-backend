@@ -23,8 +23,7 @@ vi.mock("bullmq", () => ({
   }),
 }));
 
-const { BullmqEventBus } =
-  await import("../../../src/core/events/bullmqEventBus.js");
+const { BullmqEventBus } = await import("@/core/events/bullmqEventBus.js");
 
 const event = {
   name: "PaymentCompleted" as const,

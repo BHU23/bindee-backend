@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { buildApp } from "../../src/app.js";
-import { validate } from "../../src/core/utils/validate.js";
-import { ConflictError } from "../../src/core/errors/index.js";
+import { buildApp } from "@/app.js";
+import { validate } from "@/core/utils/validate.js";
+import { ConflictError } from "@/core/errors/index.js";
 
 async function buildTestApp() {
   const app = await buildApp({ logger: false });

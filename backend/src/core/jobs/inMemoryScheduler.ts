@@ -1,4 +1,8 @@
-import { type CancelTimer, type Clock, systemClock } from "../utils/clock.js";
+import {
+  type CancelTimer,
+  type Clock,
+  systemClock,
+} from "@/core/utils/clock.js";
 import type { JobFn, JobName, Scheduler } from "./scheduler.js";
 
 interface Registration {

@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { systemClock } from "../../../src/core/utils/clock.js";
-import { validate } from "../../../src/core/utils/validate.js";
-import { JOB_NAMES } from "../../../src/core/jobs/scheduler.js";
-import { EVENT_NAMES } from "../../../src/core/events/eventBus.js";
-import { prisma } from "../../../src/database/client/prisma.js";
+import { systemClock } from "@/core/utils/clock.js";
+import { validate } from "@/core/utils/validate.js";
+import { JOB_NAMES } from "@/core/jobs/scheduler.js";
+import { EVENT_NAMES } from "@/core/events/eventBus.js";
+import { prisma } from "@/database/client/prisma.js";
 import {
   createWithIdempotency,
   hashRequest,
-} from "../../../src/core/utils/idempotency.js";
+} from "@/core/utils/idempotency.js";
 import { createInMemoryIdempotencyRepository } from "../../fixtures/inMemoryIdempotencyRepository.js";
 
 describe("systemClock", () => {

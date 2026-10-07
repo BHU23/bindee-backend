@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import Fastify from "fastify";
-import { registerRoutes } from "../../src/routes/index.js";
+import { registerRoutes } from "@/routes/index.js";
 
 describe("GET /health", () => {
   it("returns ok", async () => {

@@ -1,4 +1,4 @@
-import { type Clock, systemClock } from "../utils/clock.js";
+import { type Clock, systemClock } from "@/core/utils/clock.js";
 import {
   DEFAULT_RETRY,
   type DomainEvent,

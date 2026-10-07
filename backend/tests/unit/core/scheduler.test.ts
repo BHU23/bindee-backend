@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { ManualClock } from "../../../src/core/utils/clock.js";
-import { InMemoryScheduler } from "../../../src/core/jobs/inMemoryScheduler.js";
+import { ManualClock } from "@/core/utils/clock.js";
+import { InMemoryScheduler } from "@/core/jobs/inMemoryScheduler.js";
 
 describe("InMemoryScheduler", () => {
   describe("AC-FND-06 repeatable job", () => {

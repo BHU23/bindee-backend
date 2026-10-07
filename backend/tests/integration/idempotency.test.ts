@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { ManualClock } from "../../src/core/utils/clock.js";
+import { ManualClock } from "@/core/utils/clock.js";
 import {
   createWithIdempotency,
   hashRequest,
-} from "../../src/core/utils/idempotency.js";
-import { AppError } from "../../src/core/errors/index.js";
+} from "@/core/utils/idempotency.js";
+import { AppError } from "@/core/errors/index.js";
 import { createInMemoryIdempotencyRepository } from "../fixtures/inMemoryIdempotencyRepository.js";
 
 function setup(timeoutMs = 10_000) {

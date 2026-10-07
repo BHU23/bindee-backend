@@ -1,7 +1,7 @@
 import type {
   IdempotencyRecord,
   IdempotencyRepository,
-} from "../../src/core/utils/idempotency.js";
+} from "@/core/utils/idempotency.js";
 
 export function createInMemoryIdempotencyRepository(): IdempotencyRepository {
   const rows = new Map<string, IdempotencyRecord>();

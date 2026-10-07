@@ -1,5 +1,5 @@
-import type { EventBus } from "../events/eventBus.js";
-import type { Scheduler } from "../jobs/scheduler.js";
+import type { EventBus } from "@/core/events/eventBus.js";
+import type { Scheduler } from "@/core/jobs/scheduler.js";
 
 declare module "fastify" {
   interface FastifyInstance {

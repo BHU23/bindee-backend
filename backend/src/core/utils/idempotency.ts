@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { ConflictError } from "../errors/index.js";
+import { ConflictError } from "@/core/errors/index.js";
 import { type Clock, systemClock } from "./clock.js";
 
 export type IdempotencyStatus = "IN_PROGRESS" | "DONE";
