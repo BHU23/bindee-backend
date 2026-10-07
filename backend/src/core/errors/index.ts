@@ -40,3 +40,21 @@ export class InvalidStateTransitionError extends ConflictError {
     );
   }
 }
+
+export class SeatUnavailableError extends ConflictError {
+  constructor(message = "One or more requested seats are no longer available") {
+    super("SEAT_UNAVAILABLE", message);
+  }
+}
+
+export class SearchExpiredError extends AppError {
+  constructor(message = "Search results have expired, please search again") {
+    super(410, "SEARCH_EXPIRED", message);
+  }
+}
+
+export class InventoryUnavailableError extends AppError {
+  constructor(message = "Inventory is temporarily unavailable") {
+    super(503, "INVENTORY_UNAVAILABLE", message);
+  }
+}

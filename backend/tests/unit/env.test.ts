@@ -15,6 +15,17 @@ describe("parseEnv", () => {
     });
   });
 
+  describe("AC-INV-06 force price change trigger", () => {
+    it("When INVENTORY_FORCE_PRICE_CHANGE is set, should expose the flight number", () => {
+      const env = parseEnv({ ...base, INVENTORY_FORCE_PRICE_CHANGE: "BN 102" });
+      expect(env.INVENTORY_FORCE_PRICE_CHANGE).toBe("BN 102");
+    });
+
+    it("When it is not set, should be undefined", () => {
+      expect(parseEnv(base).INVENTORY_FORCE_PRICE_CHANGE).toBeUndefined();
+    });
+  });
+
   describe("when the environment is valid", () => {
     it("When required variables are set, should apply defaults", () => {
       const env = parseEnv(base);

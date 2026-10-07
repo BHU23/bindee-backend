@@ -8,6 +8,8 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
+  /** Flight number whose next reprice returns a changed price (HS-1 demo/test trigger). */
+  INVENTORY_FORCE_PRICE_CHANGE: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof schema>;
