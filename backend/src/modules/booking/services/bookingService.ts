@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/database/generated/client.js";
 import type { Clock } from "@/core/utils/clock.js";
 import { validate } from "@/core/utils/validate.js";
 import {
+  BadRequestError,
   ConflictError,
   NotFoundError,
   PriceChangedError,
@@ -25,6 +26,20 @@ import type {
   ReturnFlightsResponse,
   SelectFareResponse,
 } from "../types/bookingDraft.js";
+import { createPassengerRepository } from "../repositories/passengerRepository.js";
+import {
+  ageOn,
+  isTitleAllowed,
+  titleGender,
+  typeForAge,
+} from "../models/passengerRules.js";
+import type {
+  PassengerInput,
+  PassengerType,
+  PassengersResponse,
+} from "../types/passenger.js";
+import { savePassengersSchema } from "../validators/passengers.js";
+import { passengersView } from "../views/passengerView.js";
 import {
   acceptPriceSchema,
   createDraftSchema,
@@ -63,6 +78,15 @@ export interface BookingService {
     body: unknown,
     sessionId?: string,
   ): Promise<SelectFareResponse>;
+  savePassengers(
+    params: unknown,
+    body: unknown,
+    sessionId?: string,
+  ): Promise<PassengersResponse>;
+  getPassengers(
+    params: unknown,
+    sessionId?: string,
+  ): Promise<PassengersResponse>;
 }
 
 export interface BookingServiceDeps {
@@ -91,9 +115,74 @@ function findFlight(
   return flight;
 }
 
+function fieldPath(index: number, field: string): string {
+  return `passengers.${index}.${field}`;
+}
+
+function assertCountsMatch(
+  draft: BookingDraftRecord,
+  passengers: PassengerInput[],
+): void {
+  function count(type: PassengerType): number {
+    return passengers.filter((p) => p.type === type).length;
+  }
+  if (
+    count("adult") !== draft.adults ||
+    count("child") !== draft.children ||
+    count("infant") !== draft.infants
+  ) {
+    throw new BadRequestError(
+      "PAX_COUNT_MISMATCH",
+      "Passenger counts must match the search",
+    );
+  }
+}
+
+/** Title must suit the passenger type and agree with the gender (AC-PX-09, AC-PX-10). */
+function assertTitleRules(passengers: PassengerInput[]): void {
+  passengers.forEach((p, index) => {
+    if (!isTitleAllowed(p.type, p.title)) {
+      throw new BadRequestError(
+        "TITLE_NOT_ALLOWED_FOR_TYPE",
+        "This title is not allowed for the passenger type",
+        {
+          [fieldPath(index, "title")]:
+            "Choose a title that suits the passenger type",
+        },
+      );
+    }
+    if (titleGender(p.title) !== p.gender) {
+      throw new BadRequestError(
+        "TITLE_GENDER_MISMATCH",
+        "The gender does not match the title",
+        { [fieldPath(index, "gender")]: "Gender must match the title" },
+      );
+    }
+  });
+}
+
+function assertAgesMatch(
+  passengers: PassengerInput[],
+  travelDate: string,
+): void {
+  passengers.forEach((p, index) => {
+    if (typeForAge(ageOn(p.dob, travelDate)) !== p.type) {
+      throw new BadRequestError(
+        "PAX_TYPE_AGE_MISMATCH",
+        "The age on the travel date does not match the passenger type",
+        {
+          [fieldPath(index, "dob")]:
+            "Date of birth does not match the passenger type",
+        },
+      );
+    }
+  });
+}
+
 export function createBookingService(deps: BookingServiceDeps): BookingService {
   const { prisma, clock, inventory } = deps;
   const drafts = createBookingDraftRepository(prisma);
+  const passengerRepo = createPassengerRepository(prisma);
 
   async function loadDraft(
     draftId: string,
@@ -298,6 +387,40 @@ export function createBookingService(deps: BookingServiceDeps): BookingService {
         throw await priceChanged(draft, flightId, newPrice, repriced);
       }
       return saveLeg(draft, leg, session, flightId, fareFamily, repriced);
+    },
+
+    async savePassengers(params, body, sessionId) {
+      const session = requireSession(sessionId);
+      const { draftId } = validate(draftParamsSchema, params);
+      const input = validate(savePassengersSchema, body);
+      const draft = await loadDraft(draftId, session);
+      assertCountsMatch(draft, input.passengers);
+      assertTitleRules(input.passengers);
+      const search = await inventory.getSearch({
+        searchId: draft.searchId,
+        sessionId: session,
+      });
+      assertAgesMatch(input.passengers, search.query.departDate);
+      await passengerRepo.replacePassengers(
+        draft.id,
+        input.passengers,
+        input.contact,
+        input.consent,
+      );
+      return passengersView(
+        draft.id,
+        await passengerRepo.findByDraft(draft.id),
+      );
+    },
+
+    async getPassengers(params, sessionId) {
+      const session = requireSession(sessionId);
+      const { draftId } = validate(draftParamsSchema, params);
+      const draft = await loadDraft(draftId, session);
+      return passengersView(
+        draft.id,
+        await passengerRepo.findByDraft(draft.id),
+      );
     },
   };
 }

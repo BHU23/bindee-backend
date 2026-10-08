@@ -23,6 +23,8 @@ export function bookingRoutes(service: BookingService) {
       "/booking-drafts/:draftId/return/accept-price",
       controller.acceptPrice("return"),
     );
+    app.put("/booking-drafts/:draftId/passengers", controller.savePassengers);
+    app.get("/booking-drafts/:draftId/passengers", controller.getPassengers);
     app.get(
       "/booking-drafts/:draftId/return-flights",
       controller.listReturnFlights,

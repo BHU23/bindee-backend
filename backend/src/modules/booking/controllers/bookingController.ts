@@ -7,6 +7,8 @@ export interface BookingController {
   getFares(request: FastifyRequest): Promise<unknown>;
   listReturnFlights(request: FastifyRequest): Promise<unknown>;
   selectFare(leg: BookingLeg): (request: FastifyRequest) => Promise<unknown>;
+  savePassengers(request: FastifyRequest): Promise<unknown>;
+  getPassengers(request: FastifyRequest): Promise<unknown>;
   acceptPrice(leg: BookingLeg): (request: FastifyRequest) => Promise<unknown>;
 }
 
@@ -21,6 +23,10 @@ export function createBookingController(
     getFares: (request) => service.getFares(request.params, request.sessionId),
     listReturnFlights: (request) =>
       service.listReturnFlights(request.params, request.sessionId),
+    savePassengers: (request) =>
+      service.savePassengers(request.params, request.body, request.sessionId),
+    getPassengers: (request) =>
+      service.getPassengers(request.params, request.sessionId),
     selectFare: (leg) => (request) =>
       service.selectFare(leg, request.params, request.body, request.sessionId),
     acceptPrice: (leg) => (request) =>
