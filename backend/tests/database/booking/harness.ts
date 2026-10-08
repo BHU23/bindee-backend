@@ -1,6 +1,9 @@
 import { vi } from "vitest";
 import { buildApp } from "@/app.js";
+import { InMemoryEventBus } from "@/core/events/inMemoryEventBus.js";
+import { createPrismaIdempotencyRepository } from "@/core/repositories/prismaIdempotencyRepository.js";
 import { ManualClock } from "@/core/utils/clock.js";
+import { createWithIdempotency } from "@/core/utils/idempotency.js";
 import { createBookingService } from "@/modules/booking/index.js";
 import {
   createPrismaInventory,
@@ -27,7 +30,18 @@ export async function setup(override: InventoryOverride = {}) {
     ...(typeof override === "function" ? override(base) : override),
   };
   const searchService = createSearchService({ prisma, clock, inventory });
-  const bookingService = createBookingService({ prisma, clock, inventory });
+  const eventBus = new InMemoryEventBus({ clock });
+  const withIdempotency = createWithIdempotency({
+    repository: createPrismaIdempotencyRepository(prisma.idempotencyRecord),
+    clock,
+  });
+  const bookingService = createBookingService({
+    prisma,
+    clock,
+    inventory,
+    eventBus,
+    withIdempotency,
+  });
   const app = await buildApp(
     { logger: false },
     { searchService, bookingService },
@@ -120,8 +134,25 @@ export async function setup(override: InventoryOverride = {}) {
     await putOutbound(draftId, { flightId, fareFamily: "LITE" });
     return { searchId, draftId, flightId, inboundId };
   }
+  function book(
+    payload: unknown,
+    idempotencyKey: string | null = "key-1",
+    session: string | null = SESSION_A,
+  ) {
+    return app.inject({
+      method: "POST",
+      url: "/api/v1/bookings",
+      headers: {
+        ...(session ? { "x-session-id": session } : {}),
+        ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
+      },
+      payload: payload as object,
+    });
+  }
   return {
     clock,
+    eventBus,
+    book,
     inventory,
     roundTripDraft,
     createSearch,
