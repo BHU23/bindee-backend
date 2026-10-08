@@ -5,6 +5,7 @@ import type { InventoryPort } from "@/modules/inventory/types/inventory.js";
 import { guard } from "./guard.js";
 import { findAlternatives } from "./alternatives.js";
 import { extendOrRehold, holdSeats, releaseSeats } from "./holds.js";
+import { getSearch } from "./getSearch.js";
 import { reprice } from "./reprice.js";
 import { getFromPrices, searchFlights } from "./search.js";
 import { getSeatMap } from "./seatMap.js";
@@ -21,9 +22,14 @@ export function createPrismaInventory(deps: InventoryDeps): InventoryPort {
     return new Date(deps.clock.now());
   }
   return {
-    searchFlights: (query) =>
+    searchFlights: (query, sessionId) =>
       guard(() =>
-        searchFlights(deps.prisma, now(), searchQuerySchema.parse(query)),
+        searchFlights(
+          deps.prisma,
+          now(),
+          searchQuerySchema.parse(query),
+          sessionId,
+        ),
       ),
     reprice: (input) =>
       guard(() =>
@@ -47,5 +53,6 @@ export function createPrismaInventory(deps: InventoryDeps): InventoryPort {
       guard(() => findAlternatives(deps.prisma, now(), input)),
     getFromPrices: (input) =>
       guard(() => getFromPrices(deps.prisma, now(), input)),
+    getSearch: (input) => guard(() => getSearch(deps.prisma, now(), input)),
   };
 }

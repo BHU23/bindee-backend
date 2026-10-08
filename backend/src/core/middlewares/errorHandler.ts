@@ -5,11 +5,16 @@ import type {
   FastifyRequest,
 } from "fastify";
 import { ZodError } from "zod";
-import { AppError } from "@/core/errors/index.js";
+import { AppError, SearchExpiredError } from "@/core/errors/index.js";
 import { zodFields } from "@/core/utils/validate.js";
 
 interface ErrorBody {
-  error: { code: string; message: string; fields?: Record<string, string> };
+  error: {
+    code: string;
+    message: string;
+    fields?: Record<string, string>;
+    query?: object;
+  };
 }
 
 function send(reply: FastifyReply, status: number, error: ErrorBody["error"]) {
@@ -26,6 +31,9 @@ function handleError(
       code: error.code,
       message: error.message,
       ...(error.fields ? { fields: error.fields } : {}),
+      ...(error instanceof SearchExpiredError && error.query
+        ? { query: error.query }
+        : {}),
     });
   }
   if (error instanceof ZodError) {

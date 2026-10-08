@@ -6,8 +6,13 @@ import type {
   PaxCounts,
 } from "@/modules/inventory/types/inventory.js";
 
+export const FLIGHT_INCLUDE = {
+  route: { include: { origin: true } },
+  fares: true,
+} satisfies Prisma.FlightInclude;
+
 export type FlightWithFares = Prisma.FlightGetPayload<{
-  include: { route: true; fares: true };
+  include: typeof FLIGHT_INCLUDE;
 }>;
 
 /** Seats a party occupies; infants travel on a lap. */
@@ -51,7 +56,11 @@ export function toFlightOption(
     destination: flight.route.destinationCode,
     departAt: flight.departAt.toISOString(),
     arriveAt: flight.arriveAt.toISOString(),
-    durationMinutes: flight.route.durationMinutes,
+    durationMinutes: Math.round(
+      (flight.arriveAt.getTime() - flight.departAt.getTime()) / 60_000,
+    ),
+    stops: flight.stops,
+    departTimezone: flight.route.origin.timezone,
     international: flight.route.international,
     seatsLeft,
     soldOut: seatsLeft < seatsNeeded(pax),
