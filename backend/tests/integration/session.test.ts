@@ -57,5 +57,18 @@ describe("guest session", () => {
         /Idempotency-Key/i,
       );
     });
+
+    it("When a browser preflights a PUT, should allow the PUT method", async () => {
+      const app = await buildTestApp();
+      const res = await app.inject({
+        method: "OPTIONS",
+        url: "/_t/session",
+        headers: {
+          origin: "http://localhost:5173",
+          "access-control-request-method": "PUT",
+        },
+      });
+      expect(res.headers["access-control-allow-methods"]).toMatch(/\bPUT\b/);
+    });
   });
 });
