@@ -58,7 +58,8 @@ describe("shared constants", () => {
       "complete-refunds",
     ]);
     expect(EVENT_NAMES).toContain("PaidAfterHoldExpired");
-    expect(EVENT_NAMES).toHaveLength(11);
+    expect(EVENT_NAMES).toContain("PaymentMethodSelected");
+    expect(EVENT_NAMES).toHaveLength(12);
   });
 });
 

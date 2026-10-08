@@ -21,3 +21,12 @@ export interface ConfirmBookingResponse {
   holdExpiresAt: string;
   total: number;
 }
+
+/** What the payment module needs to know about a booking. */
+export interface BookingForPayment {
+  id: string;
+  pnr: string;
+  status: BookingStatus;
+  total: number;
+  holdExpiresAt: Date;
+}

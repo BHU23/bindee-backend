@@ -98,3 +98,9 @@ export class InventoryUnavailableError extends AppError {
     this.cause = cause;
   }
 }
+
+export class HoldExpiredError extends AppError {
+  constructor(message = "The seat hold for this booking has expired") {
+    super(410, "HOLD_EXPIRED", message);
+  }
+}
