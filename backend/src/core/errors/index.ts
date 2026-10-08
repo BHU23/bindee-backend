@@ -22,6 +22,13 @@ export class ValidationError extends AppError {
   }
 }
 
+/** A 400 that carries its own machine-readable code (unlike the generic VALIDATION_ERROR). */
+export class BadRequestError extends AppError {
+  constructor(code: string, message: string, fields?: ErrorFields) {
+    super(400, code, message, fields);
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(code = "NOT_FOUND", message = "Resource not found") {
     super(404, code, message);
