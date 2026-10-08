@@ -14,14 +14,17 @@ export const SESSION_A = "0b9c7a52-1d2e-4a3b-9c4d-5e6f7a8b9c0d";
 export const SESSION_B = "6f1d3c8e-2a4b-4c5d-8e9f-0a1b2c3d4e5f";
 export const UNKNOWN_ID = "00000000-0000-4000-8000-000000000000";
 
-export async function setup(override: Partial<InventoryPort> = {}) {
+type InventoryOverride =
+  Partial<InventoryPort> | ((base: InventoryPort) => Partial<InventoryPort>);
+
+export async function setup(override: InventoryOverride = {}) {
   const clock = new ManualClock();
   await clock.advance(SEED_NOW.getTime());
   const base = createPrismaInventory({ prisma, clock });
   const inventory: InventoryPort = {
     ...base,
     reprice: vi.fn(base.reprice),
-    ...override,
+    ...(typeof override === "function" ? override(base) : override),
   };
   const searchService = createSearchService({ prisma, clock, inventory });
   const bookingService = createBookingService({ prisma, clock, inventory });
@@ -30,7 +33,10 @@ export async function setup(override: Partial<InventoryPort> = {}) {
     { searchService, bookingService },
   );
 
-  async function createSearch(session = SESSION_A): Promise<string> {
+  async function createSearch(
+    session = SESSION_A,
+    overrides: Record<string, unknown> = {},
+  ): Promise<string> {
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/searches",
@@ -41,6 +47,7 @@ export async function setup(override: Partial<InventoryPort> = {}) {
         destination: "HKT",
         departDate: "2026-10-08",
         adults: 1,
+        ...overrides,
       },
     });
     return res.json().searchId as string;
@@ -93,9 +100,30 @@ export async function setup(override: Partial<InventoryPort> = {}) {
     const flightId = await firstFlightId(searchId);
     return { searchId, draftId, flightId };
   }
+  async function returnFlightId(searchId: string): Promise<string> {
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/searches/${searchId}/flights?leg=return`,
+      headers: { "x-session-id": SESSION_A },
+    });
+    return res.json().flights[0].flightId as string;
+  }
+  /** A ROUND_TRIP draft with the first outbound flight already selected (LITE). */
+  async function roundTripDraft() {
+    const searchId = await createSearch(SESSION_A, {
+      tripType: "ROUND_TRIP",
+      returnDate: "2026-10-10",
+    });
+    const { draftId } = (await createDraft({ searchId })).json();
+    const flightId = await firstFlightId(searchId);
+    const inboundId = await returnFlightId(searchId);
+    await putOutbound(draftId, { flightId, fareFamily: "LITE" });
+    return { searchId, draftId, flightId, inboundId };
+  }
   return {
     clock,
     inventory,
+    roundTripDraft,
     createSearch,
     createDraft,
     putOutbound,

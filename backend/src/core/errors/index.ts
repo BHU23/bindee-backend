@@ -34,6 +34,12 @@ export class ConflictError extends AppError {
   }
 }
 
+export class UnprocessableError extends AppError {
+  constructor(code: string, message: string) {
+    super(422, code, message);
+  }
+}
+
 export class PriceChangedError extends AppError {
   constructor(
     price: {
