@@ -1,9 +1,12 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { BookingService } from "../services/bookingService.js";
+import type { BookingLeg } from "../types/bookingDraft.js";
 
 export interface BookingController {
   createDraft(request: FastifyRequest, reply: FastifyReply): Promise<unknown>;
-  selectOutbound(request: FastifyRequest): Promise<unknown>;
+  getFares(request: FastifyRequest): Promise<unknown>;
+  selectFare(leg: BookingLeg): (request: FastifyRequest) => Promise<unknown>;
+  acceptPrice(leg: BookingLeg): (request: FastifyRequest) => Promise<unknown>;
 }
 
 export function createBookingController(
@@ -14,7 +17,10 @@ export function createBookingController(
       const body = await service.createDraft(request.body, request.sessionId);
       return reply.status(201).send(body);
     },
-    selectOutbound: (request) =>
-      service.selectOutbound(request.params, request.body, request.sessionId),
+    getFares: (request) => service.getFares(request.params, request.sessionId),
+    selectFare: (leg) => (request) =>
+      service.selectFare(leg, request.params, request.body, request.sessionId),
+    acceptPrice: (leg) => (request) =>
+      service.acceptPrice(leg, request.params, request.body, request.sessionId),
   };
 }

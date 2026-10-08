@@ -1,5 +1,19 @@
 import type { FareFamily, TripType } from "@/modules/inventory/index.js";
 
+export type BookingLeg = "outbound" | "return";
+
+export interface PendingSelection {
+  flightId: string;
+  fareFamily: FareFamily;
+}
+
+export interface LegState {
+  flightId: string | null;
+  fareFamily: FareFamily | null;
+  price: number | null;
+  pending: PendingSelection | null;
+}
+
 export interface BookingDraftRecord {
   id: string;
   sessionId: string;
@@ -9,10 +23,9 @@ export interface BookingDraftRecord {
   children: number;
   infants: number;
   searchedAt: Date;
-  outboundFlightId: string | null;
-  outboundFareFamily: FareFamily | null;
-  outboundPrice: number | null;
+  outbound: LegState;
   outboundArriveAt: Date | null;
+  return: LegState;
   confirmedAt: Date | null;
 }
 
@@ -27,11 +40,12 @@ export interface NewBookingDraft {
   createdAt: Date;
 }
 
-export interface OutboundSelection {
+export interface LegSelection {
   flightId: string;
   fareFamily: FareFamily;
   price: number;
-  arriveAt: Date;
+  /** Outbound only: the return list is filtered against it. */
+  arriveAt?: Date;
 }
 
 export interface CreateDraftResponse {
@@ -44,4 +58,38 @@ export interface SelectFareResponse {
     total: number;
     perPax: { adult: number; child: number; infant: number };
   };
+}
+
+export interface FareDetailDto {
+  family: FareFamily;
+  perAdult: number;
+  perChild: number;
+  perInfant: number;
+  total: number;
+  cabinBagKg: number;
+  checkedBagKg: number;
+  changeAllowed: boolean;
+  changeFee: number;
+  refundAllowed: boolean;
+  refundFee: number;
+  seatIncluded: boolean;
+}
+
+export interface FaresResponse {
+  flightId: string;
+  fares: FareDetailDto[];
+}
+
+export interface FlightSummaryDto {
+  flightId: string;
+  flightNo: string;
+  from: string;
+  to: string;
+  depart: string;
+  arrive: string;
+  duration: number;
+  stops: number;
+  fromPricePerPax: number;
+  seatsLeft: number;
+  lowest: boolean;
 }
