@@ -14,6 +14,7 @@ interface ErrorBody {
     message: string;
     fields?: Record<string, string>;
     query?: object;
+    [detail: string]: unknown;
   };
 }
 
@@ -28,6 +29,7 @@ function handleError(
 ) {
   if (error instanceof AppError) {
     return send(reply, error.status, {
+      ...error.details,
       code: error.code,
       message: error.message,
       ...(error.fields ? { fields: error.fields } : {}),
