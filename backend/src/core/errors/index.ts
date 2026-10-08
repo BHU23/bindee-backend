@@ -8,6 +8,8 @@ export class AppError extends Error {
     readonly code: string,
     message: string,
     readonly fields?: ErrorFields,
+    /** Extra members merged into the response `error` object. */
+    readonly details?: object,
   ) {
     super(message);
     this.name = new.target.name;
@@ -29,6 +31,23 @@ export class NotFoundError extends AppError {
 export class ConflictError extends AppError {
   constructor(code: string, message: string) {
     super(409, code, message);
+  }
+}
+
+export class PriceChangedError extends AppError {
+  constructor(
+    price: {
+      oldPrice: number;
+      newPrice: number;
+      reason: "PRICE_UPDATED" | "FARE_SOLD_OUT";
+    },
+    extra: object = {},
+  ) {
+    super(409, "PRICE_CHANGED", "The fare price has changed", undefined, {
+      ...price,
+      diff: price.newPrice - price.oldPrice,
+      ...extra,
+    });
   }
 }
 
