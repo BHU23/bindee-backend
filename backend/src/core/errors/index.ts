@@ -42,8 +42,8 @@ export class ConflictError extends AppError {
 }
 
 export class UnprocessableError extends AppError {
-  constructor(code: string, message: string) {
-    super(422, code, message);
+  constructor(code: string, message: string, fields?: ErrorFields) {
+    super(422, code, message, fields);
   }
 }
 
