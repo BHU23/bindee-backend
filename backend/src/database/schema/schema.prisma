@@ -211,9 +211,28 @@ model BookingDraft {
   updatedAt                 DateTime    @updatedAt @map("updated_at")
 
   passengers Passenger[]
+  booking    Booking?
 
   @@index([sessionId])
   @@map("booking_draft")
+}
+
+model Booking {
+  id            String   @id @default(uuid())
+  pnr           String   @unique
+  draftId       String   @unique @map("draft_id")
+  sessionId     String   @map("session_id")
+  status        String
+  total         Int
+  holdId        String   @map("hold_id")
+  holdExpiresAt DateTime @map("hold_expires_at")
+  createdAt     DateTime @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  draft BookingDraft @relation(fields: [draftId], references: [id])
+
+  @@index([sessionId])
+  @@map("booking")
 }
 
 model Passenger {
