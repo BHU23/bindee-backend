@@ -5,6 +5,7 @@ import { createPrismaInventory } from "./modules/inventory/index.js";
 import { createPrismaIdempotencyRepository } from "./core/repositories/prismaIdempotencyRepository.js";
 import { createWithIdempotency } from "./core/utils/idempotency.js";
 import { createBookingService } from "./modules/booking/index.js";
+import { createPaymentService } from "./modules/payment/index.js";
 import { createSearchService } from "./modules/search/index.js";
 import { env } from "./config/env.js";
 import { prisma } from "./database/client/prisma.js";
@@ -34,7 +35,18 @@ const bookingService = createBookingService({
     repository: createPrismaIdempotencyRepository(prisma.idempotencyRecord),
   }),
 });
-const app = await buildApp({ logger: true }, { searchService, bookingService });
+const paymentService = createPaymentService({
+  prisma,
+  clock: systemClock,
+  eventBus,
+  withIdempotency: createWithIdempotency({
+    repository: createPrismaIdempotencyRepository(prisma.idempotencyRecord),
+  }),
+});
+const app = await buildApp(
+  { logger: true },
+  { searchService, bookingService, paymentService },
+);
 
 // Subscribers and job bodies (expire-holds, retry-ticketing, reconcile-paid, complete-refunds)
 // are registered by the specs that own them, using `eventBus` and `scheduler`.
