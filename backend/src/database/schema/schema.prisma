@@ -229,10 +229,45 @@ model Booking {
   createdAt     DateTime @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  draft BookingDraft @relation(fields: [draftId], references: [id])
+  draft            BookingDraft      @relation(fields: [draftId], references: [id])
+  paymentSelection PaymentSelection?
+  payments         Payment[]
 
   @@index([sessionId])
   @@map("booking")
+}
+
+/// The method the guest picked for a booking (payment-method); one row per booking, replaced on every save.
+model PaymentSelection {
+  id        String   @id @default(uuid())
+  bookingId String   @unique @map("booking_id")
+  method    String
+  createdAt DateTime @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("payment_selection")
+}
+
+/// A mock payment attempt started for a booking; (bookingId, idempotencyKey) makes a retried start return the same row.
+model Payment {
+  id             String   @id @default(uuid())
+  bookingId      String   @map("booking_id")
+  idempotencyKey String   @map("idempotency_key")
+  method         String
+  status         String
+  amount         Int
+  currency       String
+  expiresAt      DateTime @map("expires_at")
+  mockRef        String   @unique @map("mock_ref")
+  createdAt      DateTime @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@unique([bookingId, idempotencyKey])
+  @@map("payment")
 }
 
 model Passenger {
