@@ -18,5 +18,14 @@ export function bookingRoutes(service: BookingService) {
       "/booking-drafts/:draftId/outbound/accept-price",
       controller.acceptPrice("outbound"),
     );
+    app.put("/booking-drafts/:draftId/return", controller.selectFare("return"));
+    app.post(
+      "/booking-drafts/:draftId/return/accept-price",
+      controller.acceptPrice("return"),
+    );
+    app.get(
+      "/booking-drafts/:draftId/return-flights",
+      controller.listReturnFlights,
+    );
   };
 }

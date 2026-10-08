@@ -90,6 +90,12 @@ export function createBookingDraftRepository(
               outboundArriveAt: selection.arriveAt ?? null,
               outboundPendingFlightId: null,
               outboundPendingFareFamily: null,
+              // A new outbound invalidates the return choice (AC-FS-10).
+              returnFlightId: null,
+              returnFareFamily: null,
+              returnPrice: null,
+              returnPendingFlightId: null,
+              returnPendingFareFamily: null,
             }
           : {
               returnFlightId: selection.flightId,

@@ -93,3 +93,7 @@ export interface FlightSummaryDto {
   seatsLeft: number;
   lowest: boolean;
 }
+
+export interface ReturnFlightsResponse {
+  flights: FlightSummaryDto[];
+}
