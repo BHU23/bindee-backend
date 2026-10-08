@@ -7,100 +7,15 @@ import {
   it,
   vi,
 } from "vitest";
-import { buildApp } from "@/app.js";
-import { ManualClock } from "@/core/utils/clock.js";
 import { runSeed } from "@/database/seeds/runSeed.js";
-import { createBookingService } from "@/modules/booking/index.js";
-import {
-  createPrismaInventory,
-  type InventoryPort,
-  type RepriceResult,
-} from "@/modules/inventory/index.js";
-import { createSearchService } from "@/modules/search/index.js";
-import {
-  SEED_DAYS,
-  SEED_NOW,
-  createTestPrisma,
-  resetInventory,
-} from "../testDb.js";
-
-const prisma = createTestPrisma();
-const SESSION_A = "0b9c7a52-1d2e-4a3b-9c4d-5e6f7a8b9c0d";
-const SESSION_B = "6f1d3c8e-2a4b-4c5d-8e9f-0a1b2c3d4e5f";
-
-async function setup(override: Partial<InventoryPort> = {}) {
-  const clock = new ManualClock();
-  await clock.advance(SEED_NOW.getTime());
-  const base = createPrismaInventory({ prisma, clock });
-  const inventory: InventoryPort = {
-    ...base,
-    reprice: vi.fn(base.reprice),
-    ...override,
-  };
-  const searchService = createSearchService({ prisma, clock, inventory });
-  const bookingService = createBookingService({ prisma, clock, inventory });
-  const app = await buildApp(
-    { logger: false },
-    { searchService, bookingService },
-  );
-
-  async function createSearch(session = SESSION_A): Promise<string> {
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/v1/searches",
-      headers: { "x-session-id": session },
-      payload: {
-        tripType: "ONE_WAY",
-        origin: "BKK",
-        destination: "HKT",
-        departDate: "2026-10-08",
-        adults: 1,
-      },
-    });
-    return res.json().searchId as string;
-  }
-  function createDraft(payload: unknown, session: string | null = SESSION_A) {
-    return app.inject({
-      method: "POST",
-      url: "/api/v1/booking-drafts",
-      headers: session ? { "x-session-id": session } : {},
-      payload: payload as object,
-    });
-  }
-  function putOutbound(
-    draftId: string,
-    payload: unknown,
-    session: string | null = SESSION_A,
-  ) {
-    return app.inject({
-      method: "PUT",
-      url: `/api/v1/booking-drafts/${draftId}/outbound`,
-      headers: session ? { "x-session-id": session } : {},
-      payload: payload as object,
-    });
-  }
-  async function firstFlightId(searchId: string): Promise<string> {
-    const res = await app.inject({
-      method: "GET",
-      url: `/api/v1/searches/${searchId}/flights`,
-      headers: { "x-session-id": SESSION_A },
-    });
-    return res.json().flights[0].flightId as string;
-  }
-  return {
-    clock,
-    inventory,
-    createSearch,
-    createDraft,
-    putOutbound,
-    firstFlightId,
-  };
-}
+import type { RepriceResult } from "@/modules/inventory/index.js";
+import { SEED_DAYS, SEED_NOW, resetInventory } from "../testDb.js";
+import { prisma, setup, SESSION_A, SESSION_B } from "./harness.js";
 
 beforeAll(async () => {
   await resetInventory(prisma);
   await runSeed(prisma, { now: SEED_NOW, days: SEED_DAYS });
-});
+}, 120_000);
 beforeEach(async () => {
   await prisma.$executeRawUnsafe('TRUNCATE "booking_draft"');
 });
