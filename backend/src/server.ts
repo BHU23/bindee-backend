@@ -2,6 +2,7 @@ import { Redis } from "ioredis";
 import { buildApp } from "./app.js";
 import { systemClock } from "./core/utils/clock.js";
 import { createPrismaInventory } from "./modules/inventory/index.js";
+import { createBookingService } from "./modules/booking/index.js";
 import { createSearchService } from "./modules/search/index.js";
 import { env } from "./config/env.js";
 import { prisma } from "./database/client/prisma.js";
@@ -18,7 +19,12 @@ const searchService = createSearchService({
   clock: systemClock,
   inventory,
 });
-const app = await buildApp({ logger: true }, { searchService });
+const bookingService = createBookingService({
+  prisma,
+  clock: systemClock,
+  inventory,
+});
+const app = await buildApp({ logger: true }, { searchService, bookingService });
 
 // BullMQ workers need a blocking connection with no per-request retry limit.
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
