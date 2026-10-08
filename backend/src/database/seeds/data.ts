@@ -9,13 +9,48 @@ export const SPECIAL_LAST_SEAT_FLIGHT = "BN 199";
 export const REPRICE_TRIGGER_FLIGHT = "BN 101";
 
 export const AIRPORTS = [
-  { code: "BKK", name: "Suvarnabhumi Airport", city: "Bangkok" },
-  { code: "DMK", name: "Don Mueang International Airport", city: "Bangkok" },
-  { code: "CNX", name: "Chiang Mai International Airport", city: "Chiang Mai" },
-  { code: "HKT", name: "Phuket International Airport", city: "Phuket" },
-  { code: "HDY", name: "Hat Yai International Airport", city: "Hat Yai" },
-  { code: "SIN", name: "Singapore Changi Airport", city: "Singapore" },
-  { code: "NRT", name: "Narita International Airport", city: "Tokyo" },
+  {
+    code: "BKK",
+    name: "Suvarnabhumi Airport",
+    city: "Bangkok",
+    timezone: "Asia/Bangkok",
+  },
+  {
+    code: "DMK",
+    name: "Don Mueang International Airport",
+    city: "Bangkok",
+    timezone: "Asia/Bangkok",
+  },
+  {
+    code: "CNX",
+    name: "Chiang Mai International Airport",
+    city: "Chiang Mai",
+    timezone: "Asia/Bangkok",
+  },
+  {
+    code: "HKT",
+    name: "Phuket International Airport",
+    city: "Phuket",
+    timezone: "Asia/Bangkok",
+  },
+  {
+    code: "HDY",
+    name: "Hat Yai International Airport",
+    city: "Hat Yai",
+    timezone: "Asia/Bangkok",
+  },
+  {
+    code: "SIN",
+    name: "Singapore Changi Airport",
+    city: "Singapore",
+    timezone: "Asia/Singapore",
+  },
+  {
+    code: "NRT",
+    name: "Narita International Airport",
+    city: "Tokyo",
+    timezone: "Asia/Tokyo",
+  },
 ] as const;
 
 interface RouteConfig {
@@ -30,6 +65,16 @@ interface RouteConfig {
   serviceFee: number;
   outboundNumbers: string[];
   returnNumbers: string[];
+  /** Extra daily 1-stop flight each way, on top of `flightsPerDay`. */
+  connecting?: ConnectingConfig;
+}
+
+interface ConnectingConfig {
+  outboundNumber: string;
+  returnNumber: string;
+  durationMinutes: number;
+  departureHour: number;
+  priceFactor: number;
 }
 
 /** One entry per route pair; both directions are generated from it. */
@@ -59,6 +104,13 @@ export const ROUTE_CONFIGS: RouteConfig[] = [
     serviceFee: 50,
     outboundNumbers: ["BN 201", "BN 202", "BN 203"],
     returnNumbers: ["BN 211", "BN 212", "BN 213"],
+    connecting: {
+      outboundNumber: "BN 204",
+      returnNumber: "BN 214",
+      durationMinutes: 220,
+      departureHour: 15,
+      priceFactor: 0.85,
+    },
   },
   {
     origin: "DMK",
@@ -180,6 +232,7 @@ export interface FlightPlan {
   aircraft: AircraftName;
   international: boolean;
   priceFactor: number;
+  stops: number;
   fares: FarePlan[];
   /** Every seat sold for this flight. */
   soldOut: boolean;
@@ -251,11 +304,13 @@ export function buildFlightPlans(
           origin: config.origin,
           destination: config.destination,
           numbers: config.outboundNumbers,
+          connectingNumber: config.connecting?.outboundNumber,
         },
         {
           origin: config.destination,
           destination: config.origin,
           numbers: config.returnNumbers,
+          connectingNumber: config.connecting?.returnNumber,
         },
       ];
       for (const direction of directions) {
@@ -279,11 +334,35 @@ export function buildFlightPlans(
             aircraft: config.international ? "A321neo" : "A320",
             international: config.international,
             priceFactor: priceFactorForHour(hour),
+            stops: 0,
             fares: buildFares(config, flightNo),
             soldOut: isCnxOutbound && day === SOLD_OUT_DAY_OFFSET,
             seatsLeft: flightNo === SPECIAL_LAST_SEAT_FLIGHT ? 1 : undefined,
           });
         });
+        const connecting = config.connecting;
+        if (connecting && direction.connectingNumber) {
+          const departAt = new Date(
+            midnight.getTime() +
+              day * 86_400_000 +
+              connecting.departureHour * 3_600_000,
+          );
+          plans.push({
+            flightNo: direction.connectingNumber,
+            origin: direction.origin,
+            destination: direction.destination,
+            departAt,
+            arriveAt: new Date(
+              departAt.getTime() + connecting.durationMinutes * 60_000,
+            ),
+            aircraft: "A320",
+            international: config.international,
+            priceFactor: connecting.priceFactor,
+            stops: 1,
+            fares: buildFares(config, direction.connectingNumber),
+            soldOut: false,
+          });
+        }
       }
     }
   }

@@ -7,6 +7,7 @@ import {
   buildSeatPlans,
   priceFactorForHour,
   ROUTE_CONFIGS,
+  AIRPORTS,
 } from "@/database/seeds/data.js";
 
 const NOW = new Date("2026-10-07T03:00:00.000Z");
@@ -20,8 +21,39 @@ describe("AC-INV-15 seed plan", () => {
 
   it("When building 120 days, should create the per-route flights per day", () => {
     const plans = buildFlightPlans(NOW, 120);
-    const perDay = ROUTE_CONFIGS.reduce((n, c) => n + c.flightsPerDay * 2, 0);
+    const perDay = ROUTE_CONFIGS.reduce(
+      (n, c) => n + (c.flightsPerDay + (c.connecting ? 1 : 0)) * 2,
+      0,
+    );
     expect(plans).toHaveLength(perDay * 120);
+  });
+
+  it("AC-INV-19 When planning BKK↔HKT, should add one 1-stop flight per day each way (3h40, factor 0.85, numbering continued)", () => {
+    const plans = buildFlightPlans(NOW, 3);
+    const oneStop = plans.filter((p) => p.stops === 1);
+    expect(oneStop).toHaveLength(6);
+    expect(new Set(oneStop.map((p) => p.flightNo))).toEqual(
+      new Set(["BN 204", "BN 214"]),
+    );
+    for (const p of oneStop) {
+      expect(p.arriveAt.getTime() - p.departAt.getTime()).toBe(220 * 60_000);
+      expect(p.priceFactor).toBe(0.85);
+      expect(["BKK-HKT", "HKT-BKK"]).toContain(`${p.origin}-${p.destination}`);
+    }
+    expect(plans.filter((p) => p.stops === 0).length).toBe(plans.length - 6);
+  });
+
+  it("AC-INV-20 When listing airports, should carry IANA timezones", () => {
+    const tz = Object.fromEntries(AIRPORTS.map((a) => [a.code, a.timezone]));
+    expect(tz).toEqual({
+      BKK: "Asia/Bangkok",
+      DMK: "Asia/Bangkok",
+      CNX: "Asia/Bangkok",
+      HKT: "Asia/Bangkok",
+      HDY: "Asia/Bangkok",
+      SIN: "Asia/Singapore",
+      NRT: "Asia/Tokyo",
+    });
   });
 
   it("When picking departures, should keep the price factor within 0.90-1.20", () => {

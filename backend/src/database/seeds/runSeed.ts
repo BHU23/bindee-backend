@@ -64,7 +64,7 @@ export async function runSeed(
   for (const airport of AIRPORTS) {
     await prisma.airport.upsert({
       where: { code: airport.code },
-      update: {},
+      update: { timezone: airport.timezone },
       create: airport,
     });
   }
@@ -104,6 +104,7 @@ export async function runSeed(
         arriveAt: p.arriveAt,
         aircraft: p.aircraft,
         priceFactor: p.priceFactor,
+        stops: p.stops,
       })),
     });
   }
