@@ -9,7 +9,7 @@ describe("INVENTORY_UNAVAILABLE on dependency failure", () => {
   it("When the database throws, should surface INVENTORY_UNAVAILABLE (503) with the cause", async () => {
     const cause = new Error("connection refused");
     const prisma = {
-      flight: { findMany: vi.fn().mockRejectedValue(cause) },
+      $queryRaw: vi.fn().mockRejectedValue(cause),
     } as unknown as PrismaClient;
     const inventory = createPrismaInventory({
       prisma,

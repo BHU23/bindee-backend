@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
 import { ManualClock } from "@/core/utils/clock.js";
 import { runSeed } from "@/database/seeds/runSeed.js";
@@ -242,5 +242,107 @@ describe("AC-INV-18 from prices", () => {
       days: 30,
     });
     expect(prices.map((p) => p.price)).toEqual([null, null]);
+  });
+});
+
+describe("AC-INV-18 from prices: behaviour kept while computing in SQL", () => {
+  const pairs = [
+    { origin: "BKK", destination: "CNX" },
+    { origin: "BKK", destination: "HKT" },
+    { origin: "BKK", destination: "SIN" },
+  ];
+  function today(): Date {
+    return new Date(clock.now());
+  }
+
+  /** Independent oracle: Lite adult fare of each flight in the window that still has a free seat. */
+  async function liteFlights(pair: { origin: string; destination: string }) {
+    const flights = await prisma.flight.findMany({
+      where: {
+        route: { originCode: pair.origin, destinationCode: pair.destination },
+        departAt: {
+          gte: today(),
+          lt: new Date(today().getTime() + 30 * 86_400_000),
+        },
+        seats: {
+          some: {
+            status: "AVAILABLE",
+            holdItems: { none: { hold: { releasedAt: null } } },
+          },
+        },
+      },
+      include: { fares: { where: { family: "LITE" } } },
+    });
+    return flights.flatMap((f) =>
+      f.fares.map((fare) => ({
+        id: f.id,
+        price:
+          Math.round(fare.basePrice * f.priceFactor.toNumber()) +
+          fare.airportTax +
+          fare.fuelSurcharge +
+          fare.serviceFee,
+      })),
+    );
+  }
+  function lowest(rows: { price: number }[]): number | null {
+    return rows.length ? Math.min(...rows.map((r) => r.price)) : null;
+  }
+
+  it("When several routes are asked, should match the cheapest Lite price of each route computed independently", async () => {
+    const prices = await inventory.getFromPrices({ routes: pairs, days: 30 });
+    const expected = await Promise.all(
+      pairs.map(async (p) => lowest(await liteFlights(p))),
+    );
+    expect(prices.map((p) => p.price)).toEqual(expected);
+    expect(prices.map((p) => `${p.origin}-${p.destination}`)).toEqual(
+      pairs.map((p) => `${p.origin}-${p.destination}`),
+    );
+  });
+
+  it("When days is 0, should return no price because no flight departs inside an empty window", async () => {
+    const prices = await inventory.getFromPrices({
+      routes: pairs.slice(0, 1),
+      days: 0,
+    });
+    expect(prices.map((p) => p.price)).toEqual([null]);
+  });
+
+  it("When the cheapest flight is fully covered by a live hold, should price from the remaining flights", async () => {
+    const rows = await liteFlights(pairs[0]!);
+    const cheapest = rows.reduce((a, b) => (b.price < a.price ? b : a));
+    const others = rows.filter((r) => r.id !== cheapest.id);
+    const seats = await prisma.seat.findMany({
+      where: { flightId: cheapest.id, status: "AVAILABLE" },
+      select: { id: true },
+    });
+    const hold = await prisma.seatHold.create({
+      data: {
+        bookingRef: "PERF-TEST",
+        expiresAt: new Date(today().getTime() + 15 * 60_000),
+        items: { create: seats.map((s) => ({ seatId: s.id })) },
+      },
+    });
+    try {
+      const [result] = await inventory.getFromPrices({
+        routes: pairs.slice(0, 1),
+        days: 30,
+      });
+      expect(result?.price).toBe(lowest(others));
+    } finally {
+      await prisma.seatHold.delete({ where: { id: hold.id } });
+    }
+  });
+
+  it("When routes are asked, should hit the database with one query and not load flights or fares", async () => {
+    const raw = vi.spyOn(prisma, "$queryRaw");
+    const findMany = vi.spyOn(prisma.flight, "findMany");
+    try {
+      await inventory.getFromPrices({ routes: pairs, days: 30 });
+      expect(raw).toHaveBeenCalledTimes(1);
+      expect(findMany).not.toHaveBeenCalled();
+    } finally {
+      raw.mockRestore();
+      findMany.mockRestore();
+    }
   });
 });
