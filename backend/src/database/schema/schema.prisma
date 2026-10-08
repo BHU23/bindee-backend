@@ -182,26 +182,28 @@ model SearchSnapshot {
 
 /// Fare-selection state of one booking flow; lives as long as its search (20 min) until Confirm booking sets confirmedAt.
 model BookingDraft {
-  id                   String      @id @default(uuid())
-  sessionId            String      @map("session_id")
-  searchId             String      @map("search_id")
-  tripType             String      @map("trip_type")
-  adults               Int
-  children             Int
-  infants              Int
-  searchedAt           DateTime    @map("searched_at")
-  outboundFlightId     String?     @map("outbound_flight_id")
-  outboundFareFamily   FareFamily? @map("outbound_fare_family")
-  outboundPrice        Int?        @map("outbound_price")
-  outboundArriveAt     DateTime?   @map("outbound_arrive_at")
-  outboundPendingPrice Int?        @map("outbound_pending_price")
-  returnFlightId       String?     @map("return_flight_id")
-  returnFareFamily     FareFamily? @map("return_fare_family")
-  returnPrice          Int?        @map("return_price")
-  returnPendingPrice   Int?        @map("return_pending_price")
-  confirmedAt          DateTime?   @map("confirmed_at")
-  createdAt            DateTime    @map("created_at")
-  updatedAt            DateTime    @updatedAt @map("updated_at")
+  id                        String      @id @default(uuid())
+  sessionId                 String      @map("session_id")
+  searchId                  String      @map("search_id")
+  tripType                  String      @map("trip_type")
+  adults                    Int
+  children                  Int
+  infants                   Int
+  searchedAt                DateTime    @map("searched_at")
+  outboundFlightId          String?     @map("outbound_flight_id")
+  outboundFareFamily        FareFamily? @map("outbound_fare_family")
+  outboundPrice             Int?        @map("outbound_price")
+  outboundArriveAt          DateTime?   @map("outbound_arrive_at")
+  outboundPendingFlightId   String?     @map("outbound_pending_flight_id")
+  outboundPendingFareFamily FareFamily? @map("outbound_pending_fare_family")
+  returnFlightId            String?     @map("return_flight_id")
+  returnFareFamily          FareFamily? @map("return_fare_family")
+  returnPrice               Int?        @map("return_price")
+  returnPendingFlightId     String?     @map("return_pending_flight_id")
+  returnPendingFareFamily   FareFamily? @map("return_pending_fare_family")
+  confirmedAt               DateTime?   @map("confirmed_at")
+  createdAt                 DateTime    @map("created_at")
+  updatedAt                 DateTime    @updatedAt @map("updated_at")
 
   @@index([sessionId])
   @@map("booking_draft")
