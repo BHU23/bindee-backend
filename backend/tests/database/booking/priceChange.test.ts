@@ -30,7 +30,7 @@ beforeAll(async () => {
   await runSeed(prisma, { now: SEED_NOW, days: SEED_DAYS });
 }, 120_000);
 beforeEach(async () => {
-  await prisma.$executeRawUnsafe('TRUNCATE "booking_draft"');
+  await prisma.$executeRawUnsafe('TRUNCATE "booking_draft" CASCADE');
 });
 afterAll(async () => {
   await prisma.$disconnect();

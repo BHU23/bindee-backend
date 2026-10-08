@@ -202,11 +202,43 @@ model BookingDraft {
   returnPendingFlightId     String?     @map("return_pending_flight_id")
   returnPendingFareFamily   FareFamily? @map("return_pending_fare_family")
   confirmedAt               DateTime?   @map("confirmed_at")
+  contactName               String?     @map("contact_name")
+  contactEmail              String?     @map("contact_email")
+  contactPhone              String?     @map("contact_phone")
+  consentPrivacy            Boolean?    @map("consent_privacy")
+  consentMarketing          Boolean?    @map("consent_marketing")
   createdAt                 DateTime    @map("created_at")
   updatedAt                 DateTime    @updatedAt @map("updated_at")
 
+  passengers Passenger[]
+
   @@index([sessionId])
   @@map("booking_draft")
+}
+
+model Passenger {
+  id               String   @id @default(uuid())
+  draftId          String   @map("draft_id")
+  position         Int
+  type             String
+  title            String
+  firstName        String   @map("first_name")
+  middleName       String?  @map("middle_name")
+  lastName         String   @map("last_name")
+  dob              String
+  gender           String
+  nationality      String
+  passportNo       String?  @map("passport_no")
+  passportCountry  String?  @map("passport_country")
+  passportExpiry   String?  @map("passport_expiry")
+  infantOfPaxIndex Int?     @map("infant_of_pax_index")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  draft BookingDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@unique([draftId, position])
+  @@map("passenger")
 }
 
 model PromoCode {
