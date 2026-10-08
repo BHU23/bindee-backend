@@ -6,6 +6,7 @@ export interface SearchController {
   recent(request: FastifyRequest): Promise<unknown>;
   popularRoutes(): Promise<unknown>;
   promotions(): Promise<unknown>;
+  flights(request: FastifyRequest): Promise<unknown>;
 }
 
 export function createSearchController(
@@ -19,5 +20,11 @@ export function createSearchController(
     recent: (request) => service.listRecent(request.sessionId),
     popularRoutes: () => service.listPopularRoutes(),
     promotions: () => service.listPromotions(),
+    flights: (request) =>
+      service.listFlights(
+        (request.params as { searchId: string }).searchId,
+        request.query,
+        request.sessionId,
+      ),
   };
 }
