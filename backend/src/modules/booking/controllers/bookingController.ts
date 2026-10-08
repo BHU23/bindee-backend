@@ -10,6 +10,7 @@ export interface BookingController {
   savePassengers(request: FastifyRequest): Promise<unknown>;
   getPassengers(request: FastifyRequest): Promise<unknown>;
   acceptPrice(leg: BookingLeg): (request: FastifyRequest) => Promise<unknown>;
+  createBooking(request: FastifyRequest, reply: FastifyReply): Promise<unknown>;
 }
 
 export function createBookingController(
@@ -18,6 +19,14 @@ export function createBookingController(
   return {
     async createDraft(request, reply) {
       const body = await service.createDraft(request.body, request.sessionId);
+      return reply.status(201).send(body);
+    },
+    async createBooking(request, reply) {
+      const body = await service.createBooking(
+        request.headers["idempotency-key"],
+        request.body,
+        request.sessionId,
+      );
       return reply.status(201).send(body);
     },
     getFares: (request) => service.getFares(request.params, request.sessionId),

@@ -1,4 +1,6 @@
 import type { PrismaClient } from "@/database/generated/client.js";
+import type { EventBus } from "@/core/events/eventBus.js";
+import type { WithIdempotency } from "@/core/utils/idempotency.js";
 import type { Clock } from "@/core/utils/clock.js";
 import { validate } from "@/core/utils/validate.js";
 import {
@@ -47,6 +49,9 @@ import {
   faresParamsSchema,
   selectFareSchema,
 } from "../validators/bookingDraft.js";
+import { createBookingRepository } from "../repositories/bookingRepository.js";
+import type { ConfirmBookingResponse } from "../types/booking.js";
+import { createConfirmBooking } from "./confirmBooking.js";
 import {
   faresView,
   flightSummaryView,
@@ -87,12 +92,22 @@ export interface BookingService {
     params: unknown,
     sessionId?: string,
   ): Promise<PassengersResponse>;
+  /** Confirm booking: creates the PNR and holds the seats (review-hold). */
+  createBooking(
+    idempotencyKey: unknown,
+    body: unknown,
+    sessionId?: string,
+  ): Promise<ConfirmBookingResponse>;
 }
 
 export interface BookingServiceDeps {
   prisma: PrismaClient;
   clock: Clock;
   inventory: InventoryPort;
+  eventBus: EventBus;
+  withIdempotency: WithIdempotency;
+  /** Random source for PNR characters; defaults to crypto.randomInt. */
+  randomInt?: (max: number) => number;
 }
 
 function requireSession(sessionId: string | undefined): string {
@@ -180,7 +195,7 @@ function assertAgesMatch(
 }
 
 export function createBookingService(deps: BookingServiceDeps): BookingService {
-  const { prisma, clock, inventory } = deps;
+  const { prisma, clock, inventory, eventBus, withIdempotency } = deps;
   const drafts = createBookingDraftRepository(prisma);
   const passengerRepo = createPassengerRepository(prisma);
 
@@ -200,6 +215,17 @@ export function createBookingService(deps: BookingServiceDeps): BookingService {
     }
     return draft;
   }
+
+  const createBooking = createConfirmBooking({
+    clock,
+    inventory,
+    eventBus,
+    withIdempotency,
+    loadDraft,
+    passengers: passengerRepo,
+    bookings: createBookingRepository(prisma),
+    ...(deps.randomInt ? { randomInt: deps.randomInt } : {}),
+  });
 
   /** Earliest time a return flight may depart; also guards the round-trip preconditions. */
   function earliestReturnDeparture(draft: BookingDraftRecord): number {
@@ -301,6 +327,8 @@ export function createBookingService(deps: BookingServiceDeps): BookingService {
   }
 
   return {
+    createBooking,
+
     async createDraft(body, sessionId) {
       const session = requireSession(sessionId);
       const { searchId } = validate(createDraftSchema, body);

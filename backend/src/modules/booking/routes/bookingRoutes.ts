@@ -6,6 +6,7 @@ export function bookingRoutes(service: BookingService) {
   const controller = createBookingController(service);
   return async function bookingPlugin(app: FastifyInstance): Promise<void> {
     app.post("/booking-drafts", controller.createDraft);
+    app.post("/bookings", controller.createBooking);
     app.get(
       "/booking-drafts/:draftId/flights/:flightId/fares",
       controller.getFares,
