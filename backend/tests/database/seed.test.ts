@@ -32,7 +32,7 @@ describe("AC-INV-15 seed on a migrated database", () => {
     const c = await counts();
     expect(c.airports).toBe(7);
     expect(c.routes).toBe(10);
-    expect(c.flights).toBe(24 * DAYS);
+    expect(c.flights).toBe(26 * DAYS);
     expect(c.fares).toBe(c.flights * 3);
     expect(c.seats).toBeGreaterThan(c.flights * 180 - 1);
     expect(c.promos).toBe(3);
@@ -61,6 +61,46 @@ describe("AC-INV-15 seed on a migrated database", () => {
     });
     expect(flights).toHaveLength(4);
     expect(flights.every((f) => f.seats.length === 0)).toBe(true);
+  });
+});
+
+describe("AC-INV-19/20 stops and timezones", () => {
+  it("AC-INV-20 When seeded, should store airport timezones", async () => {
+    const airports = await prisma.airport.findMany({
+      orderBy: { code: "asc" },
+    });
+    expect(
+      Object.fromEntries(airports.map((a) => [a.code, a.timezone])),
+    ).toEqual({
+      BKK: "Asia/Bangkok",
+      CNX: "Asia/Bangkok",
+      DMK: "Asia/Bangkok",
+      HDY: "Asia/Bangkok",
+      HKT: "Asia/Bangkok",
+      NRT: "Asia/Tokyo",
+      SIN: "Asia/Singapore",
+    });
+  });
+
+  it("AC-INV-19 When seeded, should have one 1-stop flight per day each way on BKK↔HKT and the rest direct", async () => {
+    const oneStop = await prisma.flight.findMany({
+      where: { stops: 1 },
+      include: { route: true },
+    });
+    expect(oneStop).toHaveLength(2 * DAYS);
+    expect(
+      oneStop.every(
+        (f) =>
+          f.arriveAt.getTime() - f.departAt.getTime() === 220 * 60_000 &&
+          f.priceFactor.toNumber() === 0.85,
+      ),
+    ).toBe(true);
+    expect(
+      new Set(
+        oneStop.map((f) => `${f.route.originCode}-${f.route.destinationCode}`),
+      ),
+    ).toEqual(new Set(["BKK-HKT", "HKT-BKK"]));
+    expect(await prisma.flight.count({ where: { stops: 0 } })).toBe(24 * DAYS);
   });
 });
 

@@ -16,6 +16,12 @@ describe("inventory errors", () => {
     expect([error.status, error.code]).toEqual([410, "SEARCH_EXPIRED"]);
   });
 
+  it("AC-FR-11 When SearchExpiredError carries a query, should expose it", () => {
+    const query = { origin: "BKK" };
+    expect(new SearchExpiredError(undefined, query).query).toBe(query);
+    expect(new SearchExpiredError().query).toBeUndefined();
+  });
+
   it("When InventoryUnavailableError is created, should be 503 INVENTORY_UNAVAILABLE", () => {
     const error = new InventoryUnavailableError();
     expect([error.status, error.code]).toEqual([503, "INVENTORY_UNAVAILABLE"]);

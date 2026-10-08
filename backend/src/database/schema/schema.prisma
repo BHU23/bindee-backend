@@ -60,6 +60,7 @@ model Airport {
   code      String   @id
   name      String
   city      String
+  timezone  String   @default("Asia/Bangkok")
   createdAt DateTime @default(now()) @map("created_at")
 
   origins      Route[] @relation("RouteOrigin")
@@ -92,6 +93,7 @@ model Flight {
   arriveAt    DateTime @map("arrive_at")
   aircraft    String
   priceFactor Decimal  @map("price_factor") @db.Decimal(4, 2)
+  stops       Int      @default(0)
   createdAt   DateTime @default(now()) @map("created_at")
 
   route Route        @relation(fields: [routeId], references: [id])

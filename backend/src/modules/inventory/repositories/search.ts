@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@/database/generated/client.js";
+import type { Prisma, PrismaClient } from "@/database/generated/client.js";
 import {
   addDays,
   bangkokDayRange,
@@ -12,9 +12,10 @@ import type {
   SearchQuery,
   SearchResult,
 } from "@/modules/inventory/types/inventory.js";
-import type { SnapshotPrices } from "./snapshot.js";
+import type { SnapshotData, SnapshotPrices } from "./snapshot.js";
 import { countAvailableSeats } from "./availability.js";
 import {
+  FLIGHT_INCLUDE,
   liteAdultPrice,
   seatsNeeded,
   toFlightOption,
@@ -34,7 +35,7 @@ async function flightsBetween(
       route: { originCode: pair.origin, destinationCode: pair.destination },
       departAt: { gte: start, lt: end },
     },
-    include: { route: true, fares: true },
+    include: FLIGHT_INCLUDE,
     orderBy: { departAt: "asc" },
   });
 }
@@ -54,14 +55,16 @@ function buildCalendar(
   ) {
     const date = addDays(centerDate, offset);
     const { start, end } = bangkokDayRange(date);
-    const prices = flights
+    const open = flights
       .filter((f) => f.departAt >= start && f.departAt < end)
-      .filter((f) => (available.get(f.id) ?? 0) >= need)
+      .filter((f) => (available.get(f.id) ?? 0) >= need);
+    const prices = open
       .map(liteAdultPrice)
       .filter((p): p is number => p !== null);
     days.push({
       date,
       lowestFare: prices.length > 0 ? Math.min(...prices) : null,
+      seatsLeft: open.reduce((n, f) => n + (available.get(f.id) ?? 0), 0),
       soldOut: prices.length === 0,
     });
   }
@@ -72,6 +75,7 @@ export async function searchFlights(
   prisma: PrismaClient,
   now: Date,
   query: SearchQuery,
+  sessionId?: string,
 ): Promise<SearchResult> {
   const pax: PaxCounts = {
     adults: query.adults,
@@ -125,8 +129,23 @@ export async function searchFlights(
       }),
     );
   }
+  const outbound = outboundFlights.map(toOption);
+  const inbound = query.returnDate ? inboundFlights.map(toOption) : undefined;
+  const calendar = buildCalendar(
+    outboundWindow,
+    available,
+    query.departDate,
+    pax,
+  );
+  const data: SnapshotData = {
+    pax: { ...pax },
+    prices: snapshotPrices,
+    results: { outbound, ...(inbound ? { inbound } : {}), calendar },
+    query,
+    sessionId: sessionId ?? null,
+  };
   const snapshot = await prisma.searchSnapshot.create({
-    data: { createdAt: now, data: { pax: { ...pax }, prices: snapshotPrices } },
+    data: { createdAt: now, data: data as unknown as Prisma.InputJsonObject },
   });
 
   const international =
@@ -134,9 +153,9 @@ export async function searchFlights(
   return {
     searchId: snapshot.id,
     international,
-    outbound: outboundFlights.map(toOption),
-    ...(query.returnDate ? { inbound: inboundFlights.map(toOption) } : {}),
-    calendar: buildCalendar(outboundWindow, available, query.departDate, pax),
+    outbound,
+    ...(inbound ? { inbound } : {}),
+    calendar,
   };
 }
 

@@ -1,5 +1,11 @@
-import type { FromPrice } from "@/modules/inventory/index.js";
 import type {
+  FlightOption,
+  FromPrice,
+  StoredSearch,
+} from "@/modules/inventory/index.js";
+import type {
+  FlightCardDto,
+  FlightListResponse,
   PopularRouteResponse,
   PromotionRecord,
   PromotionResponse,
@@ -48,5 +54,45 @@ export function promotionView(record: PromotionRecord): PromotionResponse {
     route: { origin: record.originCode, destination: record.destinationCode },
     promoCode: record.promoCode,
     validUntil: record.validUntil.toISOString(),
+  };
+}
+
+export function flightCardView(
+  flight: FlightOption,
+  fromPricePerPax: number,
+  lowest: boolean,
+): FlightCardDto {
+  return {
+    flightId: flight.flightId,
+    flightNo: flight.flightNo,
+    from: flight.origin,
+    to: flight.destination,
+    depart: flight.departAt,
+    arrive: flight.arriveAt,
+    duration: flight.durationMinutes,
+    stops: flight.stops,
+    fromPricePerPax,
+    seatsLeft: flight.seatsLeft,
+    lowest,
+  };
+}
+
+export function flightListView(
+  stored: StoredSearch,
+  flights: FlightCardDto[],
+  priceRange: FlightListResponse["priceRange"],
+): FlightListResponse {
+  return {
+    query: stored.query,
+    flights,
+    priceRange,
+    calendar: stored.calendar.map((day) => ({
+      date: day.date,
+      lowestFare: day.lowestFare,
+      seatsLeft: day.seatsLeft,
+      soldOut: day.soldOut,
+    })),
+    searchedAt: stored.searchedAt,
+    expiresAt: stored.expiresAt,
   };
 }

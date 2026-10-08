@@ -44,6 +44,10 @@ export interface FlightOption {
   departAt: string;
   arriveAt: string;
   durationMinutes: number;
+  /** Number of stops; 0 = direct. */
+  stops: number;
+  /** IANA timezone of the origin airport, for local departure time. */
+  departTimezone: string;
   international: boolean;
   seatsLeft: number;
   soldOut: boolean;
@@ -54,6 +58,8 @@ export interface CalendarDay {
   date: string;
   /** Lowest Lite adult price among flights with seats, or null when sold out. */
   lowestFare: number | null;
+  /** Seats left across that day's flights that fit the party; 0 when sold out. */
+  seatsLeft: number;
   soldOut: boolean;
 }
 
@@ -124,8 +130,17 @@ export interface FromPrice extends RoutePair {
   price: number | null;
 }
 
+export interface StoredSearch {
+  query: SearchQuery;
+  searchedAt: string;
+  expiresAt: string;
+  outbound: FlightOption[];
+  inbound?: FlightOption[];
+  calendar: CalendarDay[];
+}
+
 export interface InventoryPort {
-  searchFlights(query: SearchQuery): Promise<SearchResult>;
+  searchFlights(query: SearchQuery, sessionId?: string): Promise<SearchResult>;
   reprice(input: RepriceInput): Promise<RepriceResult>;
   getSeatMap(flightId: string): Promise<SeatMap>;
   holdSeats(input: HoldRequest): Promise<HoldResult>;
@@ -140,4 +155,9 @@ export interface InventoryPort {
     routes: RoutePair[];
     days: number;
   }): Promise<FromPrice[]>;
+  /** Re-reads a search; NOT_FOUND when unknown or created by another session, SEARCH_EXPIRED after 20 min. */
+  getSearch(input: {
+    searchId: string;
+    sessionId?: string;
+  }): Promise<StoredSearch>;
 }

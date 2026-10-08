@@ -3,7 +3,7 @@ import type { PrismaClient } from "@/database/generated/client.js";
 import { bangkokDayIndex } from "@/modules/inventory/services/dates.js";
 import type { FlightOption } from "@/modules/inventory/types/inventory.js";
 import { countAvailableSeats } from "./availability.js";
-import { toFlightOption } from "./flightOptions.js";
+import { FLIGHT_INCLUDE, toFlightOption } from "./flightOptions.js";
 
 const DAY_MS = 86_400_000;
 
@@ -32,7 +32,7 @@ export async function findAlternatives(
         lt: new Date(original.departAt.getTime() + windowMs + DAY_MS),
       },
     },
-    include: { route: true, fares: true },
+    include: FLIGHT_INCLUDE,
   });
 
   const available = await countAvailableSeats(

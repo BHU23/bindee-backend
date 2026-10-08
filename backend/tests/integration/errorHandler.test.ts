@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { buildApp } from "@/app.js";
 import { validate } from "@/core/utils/validate.js";
-import { ConflictError } from "@/core/errors/index.js";
+import { ConflictError, SearchExpiredError } from "@/core/errors/index.js";
 
 async function buildTestApp() {
   const app = await buildApp({ logger: false });
@@ -19,6 +19,9 @@ async function buildTestApp() {
   app.get("/_t/boom", async () => {
     throw new Error("db password=secret at /srv/app.ts:12");
   });
+  app.get("/_t/expired", async () => {
+    throw new SearchExpiredError(undefined, { origin: "BKK" });
+  });
   app.get("/_t/conflict", async () => {
     throw new ConflictError("SEAT_UNAVAILABLE", "Seat taken");
   });
@@ -26,6 +29,18 @@ async function buildTestApp() {
 }
 
 describe("error handler", () => {
+  describe("AC-FR-11 expired search", () => {
+    it("When SearchExpiredError carries a query, should return 410 with query in the error body", async () => {
+      const app = await buildTestApp();
+      const res = await app.inject({ method: "GET", url: "/_t/expired" });
+      expect(res.statusCode).toBe(410);
+      expect(res.json().error).toMatchObject({
+        code: "SEARCH_EXPIRED",
+        query: { origin: "BKK" },
+      });
+    });
+  });
+
   describe("AC-FND-01 validation failure", () => {
     it("When the body fails Zod validation, should return 400 VALIDATION_ERROR with fields", async () => {
       const app = await buildTestApp();

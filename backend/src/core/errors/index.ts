@@ -48,7 +48,11 @@ export class SeatUnavailableError extends ConflictError {
 }
 
 export class SearchExpiredError extends AppError {
-  constructor(message = "Search results have expired, please search again") {
+  constructor(
+    message = "Search results have expired, please search again",
+    /** Criteria of the expired search, so the client can offer to search again. */
+    readonly query?: object,
+  ) {
     super(410, "SEARCH_EXPIRED", message);
   }
 }

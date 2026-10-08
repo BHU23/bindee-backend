@@ -9,5 +9,6 @@ export function searchRoutes(service: SearchService) {
     app.get("/searches/recent", controller.recent);
     app.get("/routes/popular", controller.popularRoutes);
     app.get("/promotions", controller.promotions);
+    app.get("/searches/:searchId/flights", controller.flights);
   };
 }

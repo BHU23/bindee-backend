@@ -112,13 +112,71 @@ describe("AC-INV-03 calendar", () => {
     expect(day("2026-10-15")).toEqual({
       date: "2026-10-15",
       lowestFare: 921,
+      seatsLeft: result.outbound.reduce((n, f) => n + f.seatsLeft, 0),
       soldOut: false,
     });
     expect(day("2026-10-16")).toEqual({
       date: "2026-10-16",
       lowestFare: null,
+      seatsLeft: 0,
       soldOut: true,
     });
+  });
+});
+
+describe("AC-INV-19/20 stops and timezone on flight options", () => {
+  it("AC-INV-19 When searching BKK→HKT, should expose stops (0 and 1) and the real 3h40 duration of the 1-stop flight", async () => {
+    const result = await inventory.searchFlights(query({ destination: "HKT" }));
+    expect(result.outbound.map((f) => [f.flightNo, f.stops])).toEqual([
+      ["BN 201", 0],
+      ["BN 202", 0],
+      ["BN 204", 1],
+      ["BN 203", 0],
+    ]);
+    const oneStop = result.outbound.find((f) => f.stops === 1);
+    expect(oneStop?.durationMinutes).toBe(220);
+    expect(result.outbound[0]?.durationMinutes).toBe(85);
+  });
+
+  it("AC-INV-20 When searching, should expose the IANA timezone of the departure airport", async () => {
+    const domestic = await inventory.searchFlights(query());
+    expect(domestic.outbound[0]?.departTimezone).toBe("Asia/Bangkok");
+    const tokyo = await inventory.searchFlights(
+      query({ origin: "NRT", destination: "BKK" }),
+    );
+    expect(tokyo.outbound[0]?.departTimezone).toBe("Asia/Tokyo");
+  });
+});
+
+describe("AC-INV-22 calendar seats left", () => {
+  it("When a party exceeds BN 199's last seat, should not count that flight's seats", async () => {
+    const solo = await inventory.searchFlights(query());
+    const pair = await inventory.searchFlights(query({ adults: 2 }));
+    function today(r: typeof solo): number {
+      return r.calendar.find((d) => d.date === "2026-10-08")?.seatsLeft ?? -1;
+    }
+    expect(today(solo) - today(pair)).toBe(
+      solo.outbound.find((f) => f.flightNo === "BN 199")?.seatsLeft,
+    );
+  });
+});
+
+describe("AC-INV-21 snapshot stores query and session", () => {
+  it("When searching with a session, should store query and sessionId in the snapshot", async () => {
+    const q = query();
+    const result = await inventory.searchFlights(q, "session-1");
+    const snapshot = await prisma.searchSnapshot.findUniqueOrThrow({
+      where: { id: result.searchId },
+    });
+    expect(snapshot.data).toMatchObject({ query: q, sessionId: "session-1" });
+  });
+
+  it("When searching without a session, should store sessionId null", async () => {
+    const result = await inventory.searchFlights(query());
+    const snapshot = await prisma.searchSnapshot.findUniqueOrThrow({
+      where: { id: result.searchId },
+    });
+    expect(snapshot.data).toMatchObject({ sessionId: null });
   });
 });
 
