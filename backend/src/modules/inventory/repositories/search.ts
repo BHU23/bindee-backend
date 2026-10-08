@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@/database/generated/client.js";
+import { Prisma, type PrismaClient } from "@/database/generated/client.js";
 import {
   addDays,
   bangkokDayRange,
@@ -159,28 +159,59 @@ export async function searchFlights(
   };
 }
 
+interface FromPriceRow {
+  origin_code: string;
+  destination_code: string;
+  price: number;
+}
+
+/**
+ * Lowest Lite adult fare (incl. taxes) per route over the next `days`, among flights with a free
+ * seat. One grouped query: the database computes the minimum, nothing is loaded and discarded.
+ * The fare formula mirrors `adultPrice` in services/pricing.ts.
+ */
 export async function getFromPrices(
   prisma: PrismaClient,
   now: Date,
   input: { routes: RoutePair[]; days: number },
 ): Promise<FromPrice[]> {
+  if (input.routes.length === 0) return [];
   const end = new Date(now.getTime() + input.days * 86_400_000);
-  const results: FromPrice[] = [];
-  for (const pair of input.routes) {
-    const flights = await flightsBetween(prisma, pair, now, end);
-    const available = await countAvailableSeats(
-      prisma,
-      flights.map((f) => f.id),
-      now,
-    );
-    const prices = flights
-      .filter((f) => (available.get(f.id) ?? 0) > 0)
-      .map(liteAdultPrice)
-      .filter((p): p is number => p !== null);
-    results.push({
-      ...pair,
-      price: prices.length > 0 ? Math.min(...prices) : null,
-    });
-  }
-  return results;
+  const pairs = Prisma.join(
+    input.routes.map((r) => Prisma.sql`(${r.origin}, ${r.destination})`),
+  );
+  const rows = await prisma.$queryRaw<FromPriceRow[]>`
+    SELECT r.origin_code, r.destination_code,
+      MIN(
+        ROUND(ff.base_price * f.price_factor)
+        + ff.airport_tax + ff.fuel_surcharge + ff.service_fee
+      )::int AS price
+    FROM flight f
+    JOIN route r ON r.id = f.route_id
+    JOIN flight_fare ff ON ff.flight_id = f.id AND ff.family = 'LITE'
+    WHERE (r.origin_code, r.destination_code) IN (VALUES ${pairs})
+      AND f.depart_at >= ${now} AND f.depart_at < ${end}
+      AND EXISTS (
+        SELECT 1
+        FROM seat s
+        WHERE s.flight_id = f.id
+          AND s.status = 'AVAILABLE'
+          AND NOT EXISTS (
+            SELECT 1
+            FROM seat_hold_item i
+            JOIN seat_hold h ON h.id = i.hold_id
+            WHERE i.seat_id = s.id AND h.released_at IS NULL AND h.expires_at > ${now}
+          )
+      )
+    GROUP BY r.origin_code, r.destination_code`;
+  const byRoute = new Map(
+    rows.map((row) => [
+      `${row.origin_code}>${row.destination_code}`,
+      row.price,
+    ]),
+  );
+  return input.routes.map((pair) => ({
+    ...pair,
+    price: byRoute.get(`${pair.origin}>${pair.destination}`) ?? null,
+  }));
 }
