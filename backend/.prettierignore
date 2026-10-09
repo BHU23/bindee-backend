@@ -1,0 +1,6 @@
+dist
+node_modules
+coverage
+src/database/generated
+src/database/migrations
+pnpm-lock.yaml
