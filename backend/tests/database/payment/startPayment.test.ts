@@ -17,7 +17,7 @@ afterAll(async () => {
 });
 
 describe("POST /api/v1/bookings/:pnr/payments", () => {
-  it("AC-PM-06: When a payment is started, should respond 201 PENDING with the booking total and a payment window within the hold", async () => {
+  it("AC-MP-01, AC-PM-06: When a payment is started, should respond 201 PENDING with the booking total and a payment window within the hold", async () => {
     const { bookPnr, startPayment, events } = await setup();
     const { pnr, total } = await bookPnr();
 

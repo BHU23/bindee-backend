@@ -53,7 +53,7 @@ export class FlakyEventBus implements EventBus {
 }
 
 /** App with booking + payment wired on one manual clock, plus a helper that books a PNR. */
-export async function setup() {
+export async function setup(options: { callbackSecret?: string } = {}) {
   const clock = new ManualClock();
   await clock.advance(SEED_NOW.getTime());
   const inventory = createPrismaInventory({ prisma, clock });
@@ -78,7 +78,14 @@ export async function setup() {
   });
   const app = await buildApp(
     { logger: false },
-    { searchService, bookingService, paymentService },
+    {
+      searchService,
+      bookingService,
+      paymentService,
+      ...(options.callbackSecret
+        ? { mockCallbackSecret: options.callbackSecret }
+        : {}),
+    },
   );
 
   /** Confirms a one-way booking and returns its PNR (status PENDING_PAYMENT). */
@@ -162,12 +169,73 @@ export async function setup() {
     });
   }
 
+  /** Starts a CARD payment for a fresh booking. */
+  async function startedPayment(): Promise<{
+    pnr: string;
+    total: number;
+    paymentId: string;
+    mockRef: string;
+  }> {
+    const { pnr, total } = await bookPnr();
+    const started = await startPayment(pnr);
+    const { paymentId, mockRef } = started.json();
+    return { pnr, total, paymentId, mockRef };
+  }
+
+  function payByCard(
+    paymentId: string,
+    payload: unknown,
+    session: string | null = SESSION_A,
+  ) {
+    return app.inject({
+      method: "POST",
+      url: `/api/v1/payments/${paymentId}/card`,
+      headers: session ? { "x-session-id": session } : {},
+      payload: payload as object,
+    });
+  }
+
+  function callback(payload: unknown, headers: Record<string, string> = {}) {
+    return app.inject({
+      method: "POST",
+      url: "/api/v1/mock-payment/callback",
+      headers,
+      payload: payload as object,
+    });
+  }
+
+  function getBooking(pnr: string, session: string | null = SESSION_A) {
+    return app.inject({
+      method: "GET",
+      url: `/api/v1/bookings/${pnr}`,
+      headers: session ? { "x-session-id": session } : {},
+    });
+  }
+
   const events: DomainEvent[] = [];
-  for (const name of ["PaymentMethodSelected", "PaymentPending"] as const) {
+  for (const name of [
+    "PaymentMethodSelected",
+    "PaymentPending",
+    "PaymentCompleted",
+    "PaymentFailed",
+    "PaidAfterHoldExpired",
+  ] as const) {
     eventBus.subscribe(name, async (event) => {
       events.push(event);
     });
   }
 
-  return { app, clock, eventBus, events, bookPnr, saveMethod, startPayment };
+  return {
+    app,
+    clock,
+    eventBus,
+    events,
+    bookPnr,
+    saveMethod,
+    startPayment,
+    startedPayment,
+    payByCard,
+    callback,
+    getBooking,
+  };
 }
