@@ -29,6 +29,12 @@ export class BadRequestError extends AppError {
   }
 }
 
+export class UnauthorizedError extends AppError {
+  constructor(message = "Missing or invalid credentials") {
+    super(401, "UNAUTHORIZED", message);
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(code = "NOT_FOUND", message = "Resource not found") {
     super(404, code, message);
