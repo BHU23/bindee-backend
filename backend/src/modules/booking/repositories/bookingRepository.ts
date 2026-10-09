@@ -1,6 +1,7 @@
 import type { BookingStatus } from "../types/bookingStatus.js";
 import type { PrismaClient } from "@/database/generated/client.js";
 import type {
+  BookingDetail,
   BookingForPayment,
   CreateBookingResult,
   NewBooking,
@@ -12,6 +13,11 @@ export interface BookingRepository {
 }
 
 export interface BookingLookup {
+  /** The session's own booking with the reference of its successful payment, or null. */
+  findDetailForSession(
+    pnr: string,
+    sessionId: string,
+  ): Promise<BookingDetail | null>;
   /** The session's own booking by PNR, or null (also for another session's PNR). */
   findForSession(
     pnr: string,
@@ -46,6 +52,30 @@ export function createBookingRepository(
         },
       });
       return row && { ...row, status: row.status as BookingStatus };
+    },
+    async findDetailForSession(pnr, sessionId) {
+      const row = await prisma.booking.findFirst({
+        where: { pnr, sessionId },
+        select: {
+          id: true,
+          pnr: true,
+          status: true,
+          total: true,
+          holdExpiresAt: true,
+          payments: {
+            where: { status: "SUCCESS" },
+            select: { mockRef: true },
+            take: 1,
+          },
+        },
+      });
+      if (!row) return null;
+      const { payments, ...booking } = row;
+      return {
+        ...booking,
+        status: booking.status as BookingStatus,
+        paymentReference: payments[0]?.mockRef ?? null,
+      };
     },
     async create(booking) {
       try {

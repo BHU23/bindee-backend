@@ -3,6 +3,7 @@ import type {
   FlightOption,
   RepriceResult,
 } from "@/modules/inventory/index.js";
+import type { BookingDetail, BookingResponse } from "../types/booking.js";
 import type {
   FaresResponse,
   FlightSummaryDto,
@@ -54,5 +55,17 @@ export function flightSummaryView(flight: FlightOption): FlightSummaryDto {
     fromPricePerPax: Math.min(...flight.fares.map((f) => f.perAdult)),
     seatsLeft: flight.seatsLeft,
     lowest: false,
+  };
+}
+
+export function bookingView(booking: BookingDetail): BookingResponse {
+  return {
+    pnr: booking.pnr,
+    status: booking.status,
+    total: booking.total,
+    holdExpiresAt: booking.holdExpiresAt.toISOString(),
+    ...(booking.paymentReference
+      ? { paymentReference: booking.paymentReference }
+      : {}),
   };
 }
