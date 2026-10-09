@@ -56,6 +56,30 @@ describe("POST /api/v1/bookings/:pnr/payments", () => {
     expect(await prisma.payment.count()).toBe(1);
   });
 
+  it("When the mock reference collides with another payment, should draw a new one and still create the payment", async () => {
+    let calls = 0;
+    // Draws 1-6 and 7-12 are the same reference; the third reference differs.
+    function randomInt(): number {
+      return calls++ < 12 ? 0 : 1;
+    }
+    const { bookPnr, startPayment } = await setup({ randomInt });
+    const first = await bookPnr();
+    const firstRes = await startPayment(first.pnr, { method: "CARD" }, "pay-a");
+    await prisma.$executeRawUnsafe('TRUNCATE "idempotency_record"');
+    const second = await bookPnr();
+
+    const secondRes = await startPayment(
+      second.pnr,
+      { method: "CARD" },
+      "pay-b",
+    );
+
+    expect(firstRes.json().mockRef).toBe("MOCK-20261007-AAAAAA");
+    expect(secondRes.statusCode).toBe(201);
+    expect(secondRes.json().mockRef).toBe("MOCK-20261007-BBBBBB");
+    expect(await prisma.payment.count()).toBe(2);
+  });
+
   it("AC-PM-06: When two requests with the same key race, should create one payment", async () => {
     const { bookPnr, startPayment } = await setup();
     const { pnr } = await bookPnr();

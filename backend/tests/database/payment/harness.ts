@@ -53,7 +53,12 @@ export class FlakyEventBus implements EventBus {
 }
 
 /** App with booking + payment wired on one manual clock, plus a helper that books a PNR. */
-export async function setup(options: { callbackSecret?: string } = {}) {
+export async function setup(
+  options: {
+    callbackSecret?: string;
+    randomInt?: (max: number) => number;
+  } = {},
+) {
   const clock = new ManualClock();
   await clock.advance(SEED_NOW.getTime());
   const inventory = createPrismaInventory({ prisma, clock });
@@ -75,6 +80,7 @@ export async function setup(options: { callbackSecret?: string } = {}) {
     clock,
     eventBus,
     withIdempotency,
+    ...(options.randomInt ? { randomInt: options.randomInt } : {}),
   });
   const app = await buildApp(
     { logger: false },
