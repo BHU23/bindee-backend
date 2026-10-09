@@ -261,6 +261,13 @@ model Payment {
   currency       String
   expiresAt      DateTime @map("expires_at")
   mockRef        String   @unique @map("mock_ref")
+  /// Last 4 digits of the test card; the full number is never stored (AC-MP-09).
+  cardLast4      String?  @map("card_last4")
+  /// MOCK_DECLINED or MOCK_TIMEOUT when the payment failed.
+  failureCode    String?  @map("failure_code")
+  completedAt    DateTime? @map("completed_at")
+  /// Event to publish for the settled payment; cleared once published, so a failed publish is retried.
+  pendingEvent   String?  @map("pending_event")
   createdAt      DateTime @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
