@@ -22,6 +22,13 @@ export class ValidationError extends AppError {
   }
 }
 
+/** A 400 that carries its own machine-readable code (unlike the generic VALIDATION_ERROR). */
+export class BadRequestError extends AppError {
+  constructor(code: string, message: string, fields?: ErrorFields) {
+    super(400, code, message, fields);
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(code = "NOT_FOUND", message = "Resource not found") {
     super(404, code, message);
@@ -31,6 +38,12 @@ export class NotFoundError extends AppError {
 export class ConflictError extends AppError {
   constructor(code: string, message: string) {
     super(409, code, message);
+  }
+}
+
+export class UnprocessableError extends AppError {
+  constructor(code: string, message: string, fields?: ErrorFields) {
+    super(422, code, message, fields);
   }
 }
 
@@ -83,5 +96,11 @@ export class InventoryUnavailableError extends AppError {
   ) {
     super(503, "INVENTORY_UNAVAILABLE", message);
     this.cause = cause;
+  }
+}
+
+export class HoldExpiredError extends AppError {
+  constructor(message = "The seat hold for this booking has expired") {
+    super(410, "HOLD_EXPIRED", message);
   }
 }

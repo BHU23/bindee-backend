@@ -14,6 +14,7 @@ export async function buildApp(
   registerSession(app);
   await app.register(helmet);
   await app.register(cors, {
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "X-Session-Id", "Idempotency-Key"],
   });
   await registerRoutes(app, deps);

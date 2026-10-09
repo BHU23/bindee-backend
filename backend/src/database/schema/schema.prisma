@@ -182,29 +182,117 @@ model SearchSnapshot {
 
 /// Fare-selection state of one booking flow; lives as long as its search (20 min) until Confirm booking sets confirmedAt.
 model BookingDraft {
-  id                   String      @id @default(uuid())
-  sessionId            String      @map("session_id")
-  searchId             String      @map("search_id")
-  tripType             String      @map("trip_type")
-  adults               Int
-  children             Int
-  infants              Int
-  searchedAt           DateTime    @map("searched_at")
-  outboundFlightId     String?     @map("outbound_flight_id")
-  outboundFareFamily   FareFamily? @map("outbound_fare_family")
-  outboundPrice        Int?        @map("outbound_price")
-  outboundArriveAt     DateTime?   @map("outbound_arrive_at")
-  outboundPendingPrice Int?        @map("outbound_pending_price")
-  returnFlightId       String?     @map("return_flight_id")
-  returnFareFamily     FareFamily? @map("return_fare_family")
-  returnPrice          Int?        @map("return_price")
-  returnPendingPrice   Int?        @map("return_pending_price")
-  confirmedAt          DateTime?   @map("confirmed_at")
-  createdAt            DateTime    @map("created_at")
-  updatedAt            DateTime    @updatedAt @map("updated_at")
+  id                        String      @id @default(uuid())
+  sessionId                 String      @map("session_id")
+  searchId                  String      @map("search_id")
+  tripType                  String      @map("trip_type")
+  adults                    Int
+  children                  Int
+  infants                   Int
+  searchedAt                DateTime    @map("searched_at")
+  outboundFlightId          String?     @map("outbound_flight_id")
+  outboundFareFamily        FareFamily? @map("outbound_fare_family")
+  outboundPrice             Int?        @map("outbound_price")
+  outboundArriveAt          DateTime?   @map("outbound_arrive_at")
+  outboundPendingFlightId   String?     @map("outbound_pending_flight_id")
+  outboundPendingFareFamily FareFamily? @map("outbound_pending_fare_family")
+  returnFlightId            String?     @map("return_flight_id")
+  returnFareFamily          FareFamily? @map("return_fare_family")
+  returnPrice               Int?        @map("return_price")
+  returnPendingFlightId     String?     @map("return_pending_flight_id")
+  returnPendingFareFamily   FareFamily? @map("return_pending_fare_family")
+  confirmedAt               DateTime?   @map("confirmed_at")
+  contactName               String?     @map("contact_name")
+  contactEmail              String?     @map("contact_email")
+  contactPhone              String?     @map("contact_phone")
+  consentPrivacy            Boolean?    @map("consent_privacy")
+  consentMarketing          Boolean?    @map("consent_marketing")
+  createdAt                 DateTime    @map("created_at")
+  updatedAt                 DateTime    @updatedAt @map("updated_at")
+
+  passengers Passenger[]
+  booking    Booking?
 
   @@index([sessionId])
   @@map("booking_draft")
+}
+
+model Booking {
+  id            String   @id @default(uuid())
+  pnr           String   @unique
+  draftId       String   @unique @map("draft_id")
+  sessionId     String   @map("session_id")
+  status        String
+  total         Int
+  holdId        String   @map("hold_id")
+  holdExpiresAt DateTime @map("hold_expires_at")
+  createdAt     DateTime @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  draft            BookingDraft      @relation(fields: [draftId], references: [id])
+  paymentSelection PaymentSelection?
+  payments         Payment[]
+
+  @@index([sessionId])
+  @@map("booking")
+}
+
+/// The method the guest picked for a booking (payment-method); one row per booking, replaced on every save.
+model PaymentSelection {
+  id        String   @id @default(uuid())
+  bookingId String   @unique @map("booking_id")
+  method    String
+  createdAt DateTime @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("payment_selection")
+}
+
+/// A mock payment attempt started for a booking; (bookingId, idempotencyKey) makes a retried start return the same row.
+model Payment {
+  id             String   @id @default(uuid())
+  bookingId      String   @map("booking_id")
+  idempotencyKey String   @map("idempotency_key")
+  method         String
+  status         String
+  amount         Int
+  currency       String
+  expiresAt      DateTime @map("expires_at")
+  mockRef        String   @unique @map("mock_ref")
+  createdAt      DateTime @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@unique([bookingId, idempotencyKey])
+  @@map("payment")
+}
+
+model Passenger {
+  id               String   @id @default(uuid())
+  draftId          String   @map("draft_id")
+  position         Int
+  type             String
+  title            String
+  firstName        String   @map("first_name")
+  middleName       String?  @map("middle_name")
+  lastName         String   @map("last_name")
+  dob              String
+  gender           String
+  nationality      String
+  passportNo       String?  @map("passport_no")
+  passportCountry  String?  @map("passport_country")
+  passportExpiry   String?  @map("passport_expiry")
+  infantOfPaxIndex Int?     @map("infant_of_pax_index")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  draft BookingDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@unique([draftId, position])
+  @@map("passenger")
 }
 
 model PromoCode {

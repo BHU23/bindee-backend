@@ -3,6 +3,7 @@ export const EVENT_NAMES = [
   "SeatsHeld",
   "SeatHoldFailed",
   "HoldExpired",
+  "PaymentMethodSelected",
   "PaymentPending",
   "PaymentCompleted",
   "PaymentFailed",

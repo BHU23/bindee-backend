@@ -10,3 +10,9 @@ export {
   type BookingService,
   type BookingServiceDeps,
 } from "./services/bookingService.js";
+export {
+  createBookingRepository,
+  type BookingLookup,
+  type BookingRepository,
+} from "./repositories/bookingRepository.js";
+export type { BookingForPayment } from "./types/booking.js";

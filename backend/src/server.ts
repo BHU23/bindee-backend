@@ -2,7 +2,10 @@ import { Redis } from "ioredis";
 import { buildApp } from "./app.js";
 import { systemClock } from "./core/utils/clock.js";
 import { createPrismaInventory } from "./modules/inventory/index.js";
+import { createPrismaIdempotencyRepository } from "./core/repositories/prismaIdempotencyRepository.js";
+import { createWithIdempotency } from "./core/utils/idempotency.js";
 import { createBookingService } from "./modules/booking/index.js";
+import { createPaymentService } from "./modules/payment/index.js";
 import { createSearchService } from "./modules/search/index.js";
 import { env } from "./config/env.js";
 import { prisma } from "./database/client/prisma.js";
@@ -19,17 +22,32 @@ const searchService = createSearchService({
   clock: systemClock,
   inventory,
 });
-const bookingService = createBookingService({
-  prisma,
-  clock: systemClock,
-  inventory,
-});
-const app = await buildApp({ logger: true }, { searchService, bookingService });
-
 // BullMQ workers need a blocking connection with no per-request retry limit.
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
 const eventBus = new BullmqEventBus(redis);
 const scheduler = new BullmqScheduler(redis);
+const bookingService = createBookingService({
+  prisma,
+  clock: systemClock,
+  inventory,
+  eventBus,
+  withIdempotency: createWithIdempotency({
+    repository: createPrismaIdempotencyRepository(prisma.idempotencyRecord),
+  }),
+});
+const paymentService = createPaymentService({
+  prisma,
+  clock: systemClock,
+  eventBus,
+  withIdempotency: createWithIdempotency({
+    repository: createPrismaIdempotencyRepository(prisma.idempotencyRecord),
+  }),
+});
+const app = await buildApp(
+  { logger: true },
+  { searchService, bookingService, paymentService },
+);
+
 // Subscribers and job bodies (expire-holds, retry-ticketing, reconcile-paid, complete-refunds)
 // are registered by the specs that own them, using `eventBus` and `scheduler`.
 app.decorate("eventBus", eventBus);
