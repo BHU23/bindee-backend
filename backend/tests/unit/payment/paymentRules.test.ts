@@ -20,9 +20,39 @@ describe("payment method rules", () => {
     expect(nextPageFor(parsed.method)).toBe("/pay/card");
   });
 
-  it("When the method is not offered yet, should fail", () => {
+  it("When the method is PROMPTPAY_QR or MOBILE_BANKING, should parse and map to its mock page", () => {
+    expect(
+      nextPageFor(paymentMethodSchema.parse({ method: "PROMPTPAY_QR" }).method),
+    ).toBe("/pay/qr");
+    expect(
+      nextPageFor(
+        paymentMethodSchema.parse({ method: "MOBILE_BANKING" }).method,
+      ),
+    ).toBe("/pay/mobile-banking");
+  });
+
+  it("AC-PM-04: When the bank is one of the five offered, should parse; when omitted, should parse", () => {
+    for (const bank of ["KBANK", "SCB", "KRUNGSRI", "BBL", "TTB"]) {
+      expect(
+        paymentMethodSchema.safeParse({ method: "MOBILE_BANKING", bank })
+          .success,
+      ).toBe(true);
+    }
     expect(
       paymentMethodSchema.safeParse({ method: "MOBILE_BANKING" }).success,
+    ).toBe(true);
+  });
+
+  it("AC-PM-04: When the bank is unknown, should fail", () => {
+    expect(
+      paymentMethodSchema.safeParse({ method: "MOBILE_BANKING", bank: "ACME" })
+        .success,
     ).toBe(false);
+  });
+
+  it("When the method is unknown, should fail", () => {
+    expect(paymentMethodSchema.safeParse({ method: "BITCOIN" }).success).toBe(
+      false,
+    );
   });
 });

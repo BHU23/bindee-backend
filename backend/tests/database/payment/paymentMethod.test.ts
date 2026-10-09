@@ -111,14 +111,48 @@ describe("PUT /api/v1/bookings/:pnr/payment-method", () => {
     }
   });
 
-  it("When the method is not offered in this iteration, should respond 400 VALIDATION_ERROR", async () => {
+  it("When the method is PROMPTPAY_QR, should respond 200 with /pay/qr", async () => {
     const { bookPnr, saveMethod } = await setup();
     const { pnr } = await bookPnr();
 
     const res = await saveMethod(pnr, { method: "PROMPTPAY_QR" });
 
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ method: "PROMPTPAY_QR", next: "/pay/qr" });
+  });
+
+  it("AC-PM-04: When MOBILE_BANKING is saved without a bank or with a valid bank, should respond 200 with /pay/mobile-banking", async () => {
+    const { bookPnr, saveMethod } = await setup();
+    const { pnr } = await bookPnr();
+
+    for (const payload of [
+      { method: "MOBILE_BANKING" },
+      { method: "MOBILE_BANKING", bank: "KBANK" },
+      { method: "MOBILE_BANKING", bank: "TTB" },
+    ]) {
+      const res = await saveMethod(pnr, payload);
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({
+        method: "MOBILE_BANKING",
+        next: "/pay/mobile-banking",
+      });
+    }
+  });
+
+  it("AC-PM-04: When MOBILE_BANKING is saved with an unknown bank, should respond 400 VALIDATION_ERROR and save nothing", async () => {
+    const { bookPnr, saveMethod, events } = await setup();
+    const { pnr } = await bookPnr();
+
+    const res = await saveMethod(pnr, {
+      method: "MOBILE_BANKING",
+      bank: "ACME",
+    });
+
     expect(res.statusCode).toBe(400);
-    expect(res.json().error.fields).toHaveProperty("method");
+    expect(res.json().error.code).toBe("VALIDATION_ERROR");
+    expect(res.json().error.fields).toHaveProperty("bank");
+    expect(await prisma.paymentSelection.count()).toBe(0);
+    expect(events).toEqual([]);
   });
 
   it("When the PNR is unknown, malformed or belongs to another session, should respond 404 or 400", async () => {
