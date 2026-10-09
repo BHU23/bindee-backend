@@ -1,6 +1,7 @@
 import { randomInt as cryptoRandomInt } from "node:crypto";
 import {
   ConflictError,
+  UnprocessableError,
   HoldExpiredError,
   NotFoundError,
   ValidationError,
@@ -15,11 +16,19 @@ import {
   type BookingForPayment,
 } from "@/modules/booking/index.js";
 import { generateMockRef } from "../models/mockRef.js";
+import { lastFour, outcomeForCard } from "../models/testCards.js";
 import { createPaymentRepository } from "../repositories/paymentRepository.js";
 import type {
   PaymentMethodResponse,
+  PaymentResultResponse,
   StartPaymentResponse,
 } from "../types/payment.js";
+import { createCompletePayment } from "./completePayment.js";
+import {
+  callbackSchema,
+  cardSchema,
+  paymentIdParamsSchema,
+} from "../validators/card.js";
 import {
   idempotencyKeySchema,
   paymentMethodSchema,
@@ -29,6 +38,7 @@ import { paymentMethodView, startPaymentView } from "../views/paymentView.js";
 
 const IDEMPOTENCY_SCOPE = "start-payment";
 const PAYABLE_STATUS = "PENDING_PAYMENT";
+const DEFAULT_HOLD_GRACE_SECONDS = 60;
 
 export interface PaymentService {
   /** Saves the chosen method on a PENDING_PAYMENT booking (idempotent PUT). */
@@ -44,6 +54,14 @@ export interface PaymentService {
     body: unknown,
     sessionId?: string,
   ): Promise<StartPaymentResponse>;
+  /** Submits a test card for a PENDING card payment and settles it with the simulated outcome. */
+  payByCard(
+    params: unknown,
+    body: unknown,
+    sessionId?: string,
+  ): Promise<PaymentResultResponse>;
+  /** Internal webhook of the mock payment service: settles a PENDING payment once. */
+  handleCallback(body: unknown): Promise<PaymentResultResponse>;
 }
 
 export interface PaymentServiceDeps {
@@ -53,6 +71,8 @@ export interface PaymentServiceDeps {
   withIdempotency: WithIdempotency;
   /** Random source for the mock reference; defaults to crypto.randomInt. */
   randomInt?: (max: number) => number;
+  /** Seconds after the hold expires during which a started payment still completes normally; default 60. */
+  holdGraceSeconds?: number;
 }
 
 function requireSession(sessionId: string | undefined): string {
@@ -67,6 +87,13 @@ export function createPaymentService(deps: PaymentServiceDeps): PaymentService {
   const randomInt = deps.randomInt ?? cryptoRandomInt;
   const bookings = createBookingRepository(deps.prisma);
   const payments = createPaymentRepository(deps.prisma);
+  const holdGraceSeconds = deps.holdGraceSeconds ?? DEFAULT_HOLD_GRACE_SECONDS;
+  const completePayment = createCompletePayment({
+    payments,
+    eventBus,
+    clock,
+    holdGraceSeconds,
+  });
 
   /** The session's booking, which must still be payable: PENDING_PAYMENT (409) with a live hold (410). */
   async function loadPayable(
@@ -149,6 +176,51 @@ export function createPaymentService(deps: PaymentServiceDeps): PaymentService {
           return startPaymentView(payment);
         },
       );
+    },
+
+    async payByCard(params, body, sessionId) {
+      const session = requireSession(sessionId);
+      const { paymentId } = validate(paymentIdParamsSchema, params);
+      const card = validate(cardSchema, body);
+      const payment = await payments.findForSettlement(paymentId);
+      if (!payment || payment.booking.sessionId !== session) {
+        throw new NotFoundError("PAYMENT_NOT_FOUND", "Payment not found");
+      }
+      if (payment.method !== "CARD") {
+        throw new ConflictError(
+          "INVALID_PAYMENT_METHOD",
+          "This payment was not started as a card payment",
+        );
+      }
+      if (payment.status !== "PENDING") {
+        throw new ConflictError(
+          "INVALID_STATE_TRANSITION",
+          `Payment is ${payment.status}; a card can only be submitted while PENDING`,
+        );
+      }
+      // A payment started before expiry may still be submitted during the grace period (AC-MP-06).
+      const graceEndsAt =
+        payment.booking.holdExpiresAt.getTime() + holdGraceSeconds * 1000;
+      if (clock.now() > graceEndsAt) {
+        throw new HoldExpiredError();
+      }
+      const outcome = outcomeForCard(card.cardNumber);
+      if (!outcome) {
+        throw new UnprocessableError(
+          "NOT_A_TEST_CARD",
+          "Only the test cards can be used in this mock payment",
+        );
+      }
+      return completePayment({
+        paymentId,
+        mockRef: payment.mockRef,
+        cardLast4: lastFour(card.cardNumber),
+        ...outcome,
+      });
+    },
+
+    handleCallback(body) {
+      return completePayment(validate(callbackSchema, body));
     },
   };
 }

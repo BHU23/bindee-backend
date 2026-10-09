@@ -39,13 +39,21 @@ const paymentService = createPaymentService({
   prisma,
   clock: systemClock,
   eventBus,
+  holdGraceSeconds: env.HOLD_GRACE_SECONDS,
   withIdempotency: createWithIdempotency({
     repository: createPrismaIdempotencyRepository(prisma.idempotencyRecord),
   }),
 });
 const app = await buildApp(
   { logger: true },
-  { searchService, bookingService, paymentService },
+  {
+    searchService,
+    bookingService,
+    paymentService,
+    ...(env.MOCK_CALLBACK_SECRET
+      ? { mockCallbackSecret: env.MOCK_CALLBACK_SECRET }
+      : {}),
+  },
 );
 
 // Subscribers and job bodies (expire-holds, retry-ticketing, reconcile-paid, complete-refunds)

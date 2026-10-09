@@ -50,9 +50,14 @@ import {
   selectFareSchema,
 } from "../validators/bookingDraft.js";
 import { createBookingRepository } from "../repositories/bookingRepository.js";
-import type { ConfirmBookingResponse } from "../types/booking.js";
+import type {
+  BookingResponse,
+  ConfirmBookingResponse,
+} from "../types/booking.js";
+import { pnrParamsSchema } from "../validators/booking.js";
 import { createConfirmBooking } from "./confirmBooking.js";
 import {
+  bookingView,
   faresView,
   flightSummaryView,
   selectFareView,
@@ -93,6 +98,8 @@ export interface BookingService {
     sessionId?: string,
   ): Promise<PassengersResponse>;
   /** Confirm booking: creates the PNR and holds the seats (review-hold). */
+  /** The session's own booking by PNR (404 for an unknown PNR or another session's). */
+  getBooking(params: unknown, sessionId?: string): Promise<BookingResponse>;
   createBooking(
     idempotencyKey: unknown,
     body: unknown,
@@ -216,6 +223,7 @@ export function createBookingService(deps: BookingServiceDeps): BookingService {
     return draft;
   }
 
+  const bookings = createBookingRepository(prisma);
   const createBooking = createConfirmBooking({
     clock,
     inventory,
@@ -223,7 +231,7 @@ export function createBookingService(deps: BookingServiceDeps): BookingService {
     withIdempotency,
     loadDraft,
     passengers: passengerRepo,
-    bookings: createBookingRepository(prisma),
+    bookings,
     ...(deps.randomInt ? { randomInt: deps.randomInt } : {}),
   });
 
@@ -439,6 +447,16 @@ export function createBookingService(deps: BookingServiceDeps): BookingService {
         draft.id,
         await passengerRepo.findByDraft(draft.id),
       );
+    },
+
+    async getBooking(params, sessionId) {
+      const session = requireSession(sessionId);
+      const { pnr } = validate(pnrParamsSchema, params);
+      const booking = await bookings.findDetailForSession(pnr, session);
+      if (!booking) {
+        throw new NotFoundError("BOOKING_NOT_FOUND", "Booking not found");
+      }
+      return bookingView(booking);
     },
 
     async getPassengers(params, sessionId) {

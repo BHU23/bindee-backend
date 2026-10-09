@@ -7,6 +7,8 @@ export interface RouteDeps {
   searchService?: SearchService;
   bookingService?: BookingService;
   paymentService?: PaymentService;
+  /** Shared secret of the internal mock-payment callback; unset = open (local demo). */
+  mockCallbackSecret?: string;
 }
 
 export async function registerRoutes(
@@ -23,8 +25,13 @@ export async function registerRoutes(
     });
   }
   if (deps.paymentService) {
-    await app.register(paymentRoutes(deps.paymentService), {
-      prefix: "/api/v1",
-    });
+    await app.register(
+      paymentRoutes(deps.paymentService, {
+        ...(deps.mockCallbackSecret
+          ? { callbackSecret: deps.mockCallbackSecret }
+          : {}),
+      }),
+      { prefix: "/api/v1" },
+    );
   }
 }
