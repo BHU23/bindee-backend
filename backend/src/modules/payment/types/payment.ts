@@ -67,6 +67,31 @@ export interface SettlePayment {
   booking: { from: BookingStatus; to: BookingStatus } | null;
 }
 
+/** The newest payment attempt of a booking. */
+export interface LatestPayment {
+  id: string;
+  method: string;
+  status: string;
+  failureCode: string | null;
+  cardLast4: string | null;
+}
+
+/** `GET /bookings/:pnr/payments/latest`. */
+export interface LatestPaymentResponse {
+  paymentId: string;
+  status: "PENDING" | PaymentResult;
+  failureCode?: string;
+  cardLast4?: string;
+}
+
+/** Outcome of inserting a retry: the booking may have been moved by a concurrent retry. */
+export type CreateRetryResult = PaymentRecord | "booking_moved" | null;
+
+/** The part of a logger the payment services use (Fastify's logger fits). */
+export interface PaymentLogger {
+  warn(details: object, message: string): void;
+}
+
 export type PaymentResult = "SUCCESS" | "FAILED";
 
 export interface PaymentResultResponse {

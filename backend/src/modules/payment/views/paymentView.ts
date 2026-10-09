@@ -1,4 +1,6 @@
 import type {
+  LatestPayment,
+  LatestPaymentResponse,
   PaymentMethodResponse,
   PaymentRecord,
   StartPaymentResponse,
@@ -19,5 +21,19 @@ export function startPaymentView(payment: PaymentRecord): StartPaymentResponse {
     currency: payment.currency,
     expiresAt: payment.expiresAt.toISOString(),
     mockRef: payment.mockRef,
+  };
+}
+
+export function latestPaymentView(
+  payment: LatestPayment,
+): LatestPaymentResponse {
+  return {
+    paymentId: payment.id,
+    status:
+      payment.status === "SUCCESS" || payment.status === "FAILED"
+        ? payment.status
+        : "PENDING",
+    ...(payment.failureCode ? { failureCode: payment.failureCode } : {}),
+    ...(payment.cardLast4 ? { cardLast4: payment.cardLast4 } : {}),
   };
 }

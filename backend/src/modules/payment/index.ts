@@ -4,3 +4,4 @@ export {
   type PaymentService,
   type PaymentServiceDeps,
 } from "./services/paymentService.js";
+export type { PaymentLogger } from "./types/payment.js";

@@ -6,6 +6,8 @@ export interface PaymentController {
   startPayment(request: FastifyRequest, reply: FastifyReply): Promise<unknown>;
   payByCard(request: FastifyRequest): Promise<unknown>;
   callback(request: FastifyRequest): Promise<unknown>;
+  retryPayment(request: FastifyRequest, reply: FastifyReply): Promise<unknown>;
+  latestPayment(request: FastifyRequest): Promise<unknown>;
 }
 
 export function createPaymentController(
@@ -17,8 +19,19 @@ export function createPaymentController(
     payByCard: (request) =>
       service.payByCard(request.params, request.body, request.sessionId),
     callback: (request) => service.handleCallback(request.body),
+    latestPayment: (request) =>
+      service.latestPayment(request.params, request.sessionId),
     async startPayment(request, reply) {
       const body = await service.startPayment(
+        request.params,
+        request.headers["idempotency-key"],
+        request.body,
+        request.sessionId,
+      );
+      return reply.status(201).send(body);
+    },
+    async retryPayment(request, reply) {
+      const body = await service.retryPayment(
         request.params,
         request.headers["idempotency-key"],
         request.body,

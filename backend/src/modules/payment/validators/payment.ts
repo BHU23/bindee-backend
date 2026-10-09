@@ -27,6 +27,12 @@ export const paymentMethodSchema = z.object({
   bank: z.enum(BANKS).optional(),
 });
 
+/** Retry body: without `method` the previous attempt's method is reused. */
+export const retryPaymentSchema = z.object({
+  method: z.enum(PAYMENT_METHODS).optional(),
+  bank: z.enum(BANKS).optional(),
+});
+
 export const pnrParamsSchema = z.object({
   pnr: z.string().regex(/^[A-Z0-9]{6}$/),
 });

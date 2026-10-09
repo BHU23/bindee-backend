@@ -10,6 +10,7 @@ import { transition } from "@/modules/booking/index.js";
 import type { PaymentRepository } from "../repositories/paymentRepository.js";
 import type {
   PaymentForSettlement,
+  PaymentLogger,
   PaymentResult,
   PaymentResultResponse,
   SettlePayment,
@@ -29,6 +30,8 @@ export interface CompletePaymentDeps {
   eventBus: EventBus;
   clock: Clock;
   holdGraceSeconds: number;
+  /** Receives callbacks that contradict an already settled result (AC-PR-08). */
+  logger?: PaymentLogger;
 }
 
 /** Reads and settles are retried when the booking moves between them (e.g. the hold-expiry job). */
@@ -135,6 +138,17 @@ export function createCompletePayment(deps: CompletePaymentDeps) {
       }
 
       if (payment.status !== "PENDING") {
+        // e.g. a late FAILED after SUCCESS: the first result stands (AC-PR-08).
+        if (payment.status !== input.result) {
+          deps.logger?.warn(
+            {
+              paymentId: payment.id,
+              received: input.result,
+              settled: payment.status,
+            },
+            "ignored callback for an already settled payment",
+          );
+        }
         await publishPendingEvent(payment.id);
         return resultOf(payment.id, payment.status, payment.failureCode);
       }
