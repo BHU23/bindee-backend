@@ -15,7 +15,8 @@ export interface PaymentRepository {
     bookingId: string,
     idempotencyKey: string,
   ): Promise<PaymentRecord | null>;
-  create(payment: NewPayment): Promise<PaymentRecord>;
+  /** Inserts a PENDING payment; null when a unique key is taken (same mockRef or same idempotency key). */
+  create(payment: NewPayment): Promise<PaymentRecord | null>;
   findForSettlement(paymentId: string): Promise<PaymentForSettlement | null>;
   /**
    * Moves a PENDING payment (and, optionally, its booking) to its final state in one transaction.
@@ -26,6 +27,17 @@ export interface PaymentRepository {
   claimPendingEvent(paymentId: string): Promise<string | null>;
   /** Hands a claimed event back after a failed publish so a later callback retries it. */
   restorePendingEvent(paymentId: string, event: string): Promise<void>;
+}
+
+const UNIQUE_VIOLATION = "P2002";
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === UNIQUE_VIOLATION
+  );
 }
 
 const PAYMENT_FIELDS = {
@@ -74,11 +86,17 @@ export function createPaymentRepository(
         where: { bookingId_idempotencyKey: { bookingId, idempotencyKey } },
         select: PAYMENT_FIELDS,
       }),
-    create: (payment) =>
-      prisma.payment.create({
-        data: { ...payment, status: "PENDING" },
-        select: PAYMENT_FIELDS,
-      }),
+    async create(payment) {
+      try {
+        return await prisma.payment.create({
+          data: { ...payment, status: "PENDING" },
+          select: PAYMENT_FIELDS,
+        });
+      } catch (error) {
+        if (isUniqueViolation(error)) return null;
+        throw error;
+      }
+    },
     async findForSettlement(paymentId) {
       // Payment and booking are two queries; one RepeatableRead snapshot keeps a concurrent
       // settlement from showing a PENDING payment next to an already PAID booking.

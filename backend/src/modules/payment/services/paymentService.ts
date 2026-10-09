@@ -20,6 +20,7 @@ import { lastFour, outcomeForCard } from "../models/testCards.js";
 import { createPaymentRepository } from "../repositories/paymentRepository.js";
 import type {
   PaymentMethodResponse,
+  PaymentRecord,
   PaymentResultResponse,
   StartPaymentResponse,
 } from "../types/payment.js";
@@ -39,6 +40,7 @@ import { paymentMethodView, startPaymentView } from "../views/paymentView.js";
 const IDEMPOTENCY_SCOPE = "start-payment";
 const PAYABLE_STATUS = "PENDING_PAYMENT";
 const DEFAULT_HOLD_GRACE_SECONDS = 60;
+const MOCK_REF_ATTEMPTS = 5;
 
 export interface PaymentService {
   /** Saves the chosen method on a PENDING_PAYMENT booking (idempotent PUT). */
@@ -124,17 +126,31 @@ export function createPaymentService(deps: PaymentServiceDeps): PaymentService {
     const existing = await payments.findByKey(booking.id, idempotencyKey);
     if (existing) return existing;
     const now = new Date(clock.now());
-    const created = await payments.create({
-      bookingId: booking.id,
-      idempotencyKey,
-      method,
-      amount: booking.total,
-      currency: "THB",
-      // The payment window is the rest of the hold: expiresAt <= holdExpiresAt (AC-MP-01).
-      expiresAt: booking.holdExpiresAt,
-      mockRef: generateMockRef(now, randomInt),
-      createdAt: now,
-    });
+    // The 6-character suffix is unique per day only by chance: draw again on a mockRef collision.
+    for (let attempt = 1; attempt <= MOCK_REF_ATTEMPTS; attempt++) {
+      const created = await payments.create({
+        bookingId: booking.id,
+        idempotencyKey,
+        method,
+        amount: booking.total,
+        currency: "THB",
+        // The payment window is the rest of the hold: expiresAt <= holdExpiresAt (AC-MP-01).
+        expiresAt: booking.holdExpiresAt,
+        mockRef: generateMockRef(now, randomInt),
+        createdAt: now,
+      });
+      if (created) return announce(booking, created);
+      // The key may have been taken by a concurrent request with the same Idempotency-Key.
+      const sameKey = await payments.findByKey(booking.id, idempotencyKey);
+      if (sameKey) return sameKey;
+    }
+    throw new ConflictError(
+      "MOCK_REF_UNAVAILABLE",
+      "Could not allocate a mock reference, please retry",
+    );
+  }
+
+  async function announce(booking: BookingForPayment, created: PaymentRecord) {
     await eventBus.publish({
       name: "PaymentPending",
       payload: { pnr: booking.pnr, paymentId: created.id },
