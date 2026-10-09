@@ -13,12 +13,17 @@ import { validate } from "@/core/utils/validate.js";
 import type { PrismaClient } from "@/database/generated/client.js";
 import {
   createBookingRepository,
+  transition,
   type BookingForPayment,
 } from "@/modules/booking/index.js";
 import { generateMockRef } from "../models/mockRef.js";
 import { lastFour, outcomeForCard } from "../models/testCards.js";
 import { createPaymentRepository } from "../repositories/paymentRepository.js";
 import type {
+  CreateRetryResult,
+  LatestPaymentResponse,
+  NewPayment,
+  PaymentLogger,
   PaymentMethodResponse,
   PaymentRecord,
   PaymentResultResponse,
@@ -34,11 +39,18 @@ import {
   idempotencyKeySchema,
   paymentMethodSchema,
   pnrParamsSchema,
+  retryPaymentSchema,
 } from "../validators/payment.js";
-import { paymentMethodView, startPaymentView } from "../views/paymentView.js";
+import {
+  latestPaymentView,
+  paymentMethodView,
+  startPaymentView,
+} from "../views/paymentView.js";
 
 const IDEMPOTENCY_SCOPE = "start-payment";
+const RETRY_SCOPE = "retry-payment";
 const PAYABLE_STATUS = "PENDING_PAYMENT";
+const RETRYABLE_STATUS = "PAYMENT_FAILED";
 const DEFAULT_HOLD_GRACE_SECONDS = 60;
 const MOCK_REF_ATTEMPTS = 5;
 
@@ -64,6 +76,18 @@ export interface PaymentService {
   ): Promise<PaymentResultResponse>;
   /** Internal webhook of the mock payment service: settles a PENDING payment once. */
   handleCallback(body: unknown): Promise<PaymentResultResponse>;
+  /** Starts a new attempt after a failed payment while the hold lives; the same Idempotency-Key returns the same attempt. */
+  retryPayment(
+    params: unknown,
+    idempotencyKey: unknown,
+    body: unknown,
+    sessionId?: string,
+  ): Promise<StartPaymentResponse>;
+  /** The booking's newest payment attempt, for a reloaded result page. */
+  latestPayment(
+    params: unknown,
+    sessionId?: string,
+  ): Promise<LatestPaymentResponse>;
 }
 
 export interface PaymentServiceDeps {
@@ -75,6 +99,8 @@ export interface PaymentServiceDeps {
   randomInt?: (max: number) => number;
   /** Seconds after the hold expires during which a started payment still completes normally; default 60. */
   holdGraceSeconds?: number;
+  /** Receives warnings such as an ignored late callback (AC-PR-08). */
+  logger?: PaymentLogger;
 }
 
 function requireSession(sessionId: string | undefined): string {
@@ -82,6 +108,16 @@ function requireSession(sessionId: string | undefined): string {
     throw new ValidationError("X-Session-Id header is required");
   }
   return sessionId;
+}
+
+function requireIdempotencyKey(idempotencyKey: unknown): string {
+  const key = idempotencyKeySchema.safeParse(idempotencyKey);
+  if (!key.success) {
+    throw new ValidationError("Idempotency-Key header is required", {
+      "Idempotency-Key": "required",
+    });
+  }
+  return key.data;
 }
 
 export function createPaymentService(deps: PaymentServiceDeps): PaymentService {
@@ -95,10 +131,10 @@ export function createPaymentService(deps: PaymentServiceDeps): PaymentService {
     eventBus,
     clock,
     holdGraceSeconds,
+    ...(deps.logger ? { logger: deps.logger } : {}),
   });
 
-  /** The session's booking, which must still be payable: PENDING_PAYMENT (409) with a live hold (410). */
-  async function loadPayable(
+  async function findOwnBooking(
     pnr: string,
     sessionId: string,
   ): Promise<BookingForPayment> {
@@ -106,6 +142,28 @@ export function createPaymentService(deps: PaymentServiceDeps): PaymentService {
     if (!booking) {
       throw new NotFoundError("BOOKING_NOT_FOUND", "Booking not found");
     }
+    return booking;
+  }
+
+  /** A booking is charged at most once: no new attempt after a success (AC-PR-04). */
+  async function rejectIfPaid(booking: BookingForPayment): Promise<void> {
+    if (await payments.hasSucceeded(booking.id)) {
+      throw new ConflictError(
+        "ALREADY_PAID",
+        "A payment for this booking has already succeeded",
+      );
+    }
+  }
+
+  /** The session's booking, which must still be payable: PENDING_PAYMENT (409) with a live hold (410). */
+  async function loadPayable(
+    pnr: string,
+    sessionId: string,
+  ): Promise<BookingForPayment> {
+    return requirePayable(await findOwnBooking(pnr, sessionId));
+  }
+
+  function requirePayable(booking: BookingForPayment): BookingForPayment {
     if (booking.status !== PAYABLE_STATUS) {
       throw new ConflictError(
         "INVALID_STATE_TRANSITION",
@@ -122,13 +180,16 @@ export function createPaymentService(deps: PaymentServiceDeps): PaymentService {
     booking: BookingForPayment,
     idempotencyKey: string,
     method: string,
+    insert: (
+      payment: NewPayment,
+    ) => Promise<CreateRetryResult> = payments.create,
   ) {
     const existing = await payments.findByKey(booking.id, idempotencyKey);
     if (existing) return existing;
     const now = new Date(clock.now());
     // The 6-character suffix is unique per day only by chance: draw again on a mockRef collision.
     for (let attempt = 1; attempt <= MOCK_REF_ATTEMPTS; attempt++) {
-      const created = await payments.create({
+      const created = await insert({
         bookingId: booking.id,
         idempotencyKey,
         method,
@@ -139,6 +200,12 @@ export function createPaymentService(deps: PaymentServiceDeps): PaymentService {
         mockRef: generateMockRef(now, randomInt),
         createdAt: now,
       });
+      if (created === "booking_moved") {
+        throw new ConflictError(
+          "INVALID_STATE_TRANSITION",
+          "Another payment attempt was started for this booking",
+        );
+      }
       if (created) return announce(booking, created);
       // The key may have been taken by a concurrent request with the same Idempotency-Key.
       const sameKey = await payments.findByKey(booking.id, idempotencyKey);
@@ -174,21 +241,18 @@ export function createPaymentService(deps: PaymentServiceDeps): PaymentService {
 
     async startPayment(params, idempotencyKey, body, sessionId) {
       const session = requireSession(sessionId);
-      const key = idempotencyKeySchema.safeParse(idempotencyKey);
-      if (!key.success) {
-        throw new ValidationError("Idempotency-Key header is required", {
-          "Idempotency-Key": "required",
-        });
-      }
+      const key = requireIdempotencyKey(idempotencyKey);
       const { pnr } = validate(pnrParamsSchema, params);
       const { method } = validate(paymentMethodSchema, body);
       return withIdempotency(
-        key.data,
+        key,
         `${IDEMPOTENCY_SCOPE}:${session}`,
         hashRequest({ pnr, method }),
         async () => {
-          const booking = await loadPayable(pnr, session);
-          const payment = await createPayment(booking, key.data, method);
+          const booking = await findOwnBooking(pnr, session);
+          await rejectIfPaid(booking);
+          requirePayable(booking);
+          const payment = await createPayment(booking, key, method);
           return startPaymentView(payment);
         },
       );
@@ -237,6 +301,58 @@ export function createPaymentService(deps: PaymentServiceDeps): PaymentService {
 
     handleCallback(body) {
       return completePayment(validate(callbackSchema, body));
+    },
+
+    async retryPayment(params, idempotencyKey, body, sessionId) {
+      const session = requireSession(sessionId);
+      const key = requireIdempotencyKey(idempotencyKey);
+      const { pnr } = validate(pnrParamsSchema, params);
+      const { method } = validate(retryPaymentSchema, body ?? {});
+      return withIdempotency(
+        key,
+        `${RETRY_SCOPE}:${session}`,
+        hashRequest({ pnr, method }),
+        async () => {
+          const booking = await findOwnBooking(pnr, session);
+          await rejectIfPaid(booking);
+          if (clock.now() >= booking.holdExpiresAt.getTime()) {
+            throw new HoldExpiredError();
+          }
+          // Only after a failure: a PENDING attempt must finish first, so the guest never pays twice.
+          if (booking.status !== RETRYABLE_STATUS) {
+            throw new ConflictError(
+              "INVALID_STATE_TRANSITION",
+              `Booking is ${booking.status}; a retry is only possible while ${RETRYABLE_STATUS}`,
+            );
+          }
+          const previous = await payments.findLatest(booking.id);
+          const chosen = method ?? previous?.method;
+          if (!chosen) {
+            throw new ValidationError("method is required", {
+              method: "required",
+            });
+          }
+          const move = {
+            from: booking.status,
+            to: transition(booking.status, PAYABLE_STATUS),
+          };
+          const payment = await createPayment(booking, key, chosen, (p) =>
+            payments.createRetry(p, move),
+          );
+          return startPaymentView(payment);
+        },
+      );
+    },
+
+    async latestPayment(params, sessionId) {
+      const session = requireSession(sessionId);
+      const { pnr } = validate(pnrParamsSchema, params);
+      const booking = await findOwnBooking(pnr, session);
+      const latest = await payments.findLatest(booking.id);
+      if (!latest) {
+        throw new NotFoundError("PAYMENT_NOT_FOUND", "Payment not found");
+      }
+      return latestPaymentView(latest);
     },
   };
 }

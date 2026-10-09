@@ -2,6 +2,8 @@ import type { PrismaClient } from "@/database/generated/client.js";
 import { InvalidStateTransitionError } from "@/core/errors/index.js";
 import type { BookingStatus } from "@/modules/booking/index.js";
 import type {
+  CreateRetryResult,
+  LatestPayment,
   NewPayment,
   PaymentForSettlement,
   PaymentRecord,
@@ -17,6 +19,17 @@ export interface PaymentRepository {
   ): Promise<PaymentRecord | null>;
   /** Inserts a PENDING payment; null when a unique key is taken (same mockRef or same idempotency key). */
   create(payment: NewPayment): Promise<PaymentRecord | null>;
+  /**
+   * Moves the booking (e.g. PAYMENT_FAILED → PENDING_PAYMENT) and inserts the retry in one transaction.
+   * "booking_moved" when the booking was no longer in `from` (a concurrent retry won); null on a unique key clash.
+   */
+  createRetry(
+    payment: NewPayment,
+    booking: { from: BookingStatus; to: BookingStatus },
+  ): Promise<CreateRetryResult>;
+  /** True when any payment of the booking succeeded. */
+  hasSucceeded(bookingId: string): Promise<boolean>;
+  findLatest(bookingId: string): Promise<LatestPayment | null>;
   findForSettlement(paymentId: string): Promise<PaymentForSettlement | null>;
   /**
    * Moves a PENDING payment (and, optionally, its booking) to its final state in one transaction.
@@ -97,6 +110,45 @@ export function createPaymentRepository(
         throw error;
       }
     },
+    async createRetry(payment, booking) {
+      try {
+        return await prisma.$transaction(async (tx) => {
+          // The conditional update takes the booking row lock, so concurrent retries serialise here.
+          const moved = await tx.booking.updateMany({
+            where: { id: payment.bookingId, status: booking.from },
+            data: { status: booking.to },
+          });
+          if (moved.count === 0) return "booking_moved" as const;
+          return tx.payment.create({
+            data: { ...payment, status: "PENDING" },
+            select: PAYMENT_FIELDS,
+          });
+        });
+      } catch (error) {
+        if (isUniqueViolation(error)) return null;
+        throw error;
+      }
+    },
+    async hasSucceeded(bookingId) {
+      const found = await prisma.payment.findFirst({
+        where: { bookingId, status: "SUCCESS" },
+        select: { id: true },
+      });
+      return found !== null;
+    },
+    findLatest: (bookingId) =>
+      prisma.payment.findFirst({
+        where: { bookingId },
+        // updatedAt breaks a createdAt tie: an earlier attempt is settled before its retry is inserted.
+        orderBy: [{ createdAt: "desc" }, { updatedAt: "desc" }],
+        select: {
+          id: true,
+          method: true,
+          status: true,
+          failureCode: true,
+          cardLast4: true,
+        },
+      }),
     async findForSettlement(paymentId) {
       // Payment and booking are two queries; one RepeatableRead snapshot keeps a concurrent
       // settlement from showing a PENDING payment next to an already PAID booking.

@@ -17,6 +17,8 @@ export function paymentRoutes(
   return async function paymentPlugin(app: FastifyInstance): Promise<void> {
     app.put("/bookings/:pnr/payment-method", controller.saveMethod);
     app.post("/bookings/:pnr/payments", controller.startPayment);
+    app.post("/bookings/:pnr/payments/retry", controller.retryPayment);
+    app.get("/bookings/:pnr/payments/latest", controller.latestPayment);
     app.post("/payments/:paymentId/card", controller.payByCard);
     app.post(
       "/mock-payment/callback",
