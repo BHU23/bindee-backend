@@ -115,6 +115,61 @@ describe("completePayment", () => {
     });
   });
 
+  it("AC-PR-08: When a FAILED callback arrives after SUCCESS, should ignore it and log it", async () => {
+    const warn = vi.fn();
+    const settle = vi.fn();
+    const clock = new ManualClock();
+    const payments = {
+      findForSettlement: vi
+        .fn()
+        .mockResolvedValue({ ...payment(), status: "SUCCESS" }),
+      settle,
+      claimPendingEvent: vi.fn().mockResolvedValue(null),
+    } as unknown as PaymentRepository;
+    const complete = createCompletePayment({
+      payments,
+      eventBus: new InMemoryEventBus({ clock }),
+      clock,
+      holdGraceSeconds: 60,
+      logger: { warn },
+    });
+
+    const result = await complete({
+      ...input,
+      result: "FAILED",
+      failureCode: "MOCK_DECLINED",
+    });
+
+    expect(result).toEqual({ paymentId: "pay-1", status: "SUCCESS" });
+    expect(settle).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      { paymentId: "pay-1", received: "FAILED", settled: "SUCCESS" },
+      expect.stringContaining("ignored"),
+    );
+  });
+
+  it("When the same result is delivered again, should not log it", async () => {
+    const warn = vi.fn();
+    const clock = new ManualClock();
+    const payments = {
+      findForSettlement: vi
+        .fn()
+        .mockResolvedValue({ ...payment(), status: "SUCCESS" }),
+      claimPendingEvent: vi.fn().mockResolvedValue(null),
+    } as unknown as PaymentRepository;
+    const complete = createCompletePayment({
+      payments,
+      eventBus: new InMemoryEventBus({ clock }),
+      clock,
+      holdGraceSeconds: 60,
+      logger: { warn },
+    });
+
+    await complete(input);
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it("When the publish fails, should hand the claimed event back and rethrow", async () => {
     const restorePendingEvent = vi.fn();
     const clock = new ManualClock();

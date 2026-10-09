@@ -210,6 +210,31 @@ export async function setup(
     });
   }
 
+  function retryPayment(
+    pnr: string,
+    payload: unknown = {},
+    idempotencyKey: string | null = "retry-1",
+    session: string | null = SESSION_A,
+  ) {
+    return app.inject({
+      method: "POST",
+      url: `/api/v1/bookings/${pnr}/payments/retry`,
+      headers: {
+        ...(session ? { "x-session-id": session } : {}),
+        ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
+      },
+      payload: payload as object,
+    });
+  }
+
+  function latestPayment(pnr: string, session: string | null = SESSION_A) {
+    return app.inject({
+      method: "GET",
+      url: `/api/v1/bookings/${pnr}/payments/latest`,
+      headers: session ? { "x-session-id": session } : {},
+    });
+  }
+
   function getBooking(pnr: string, session: string | null = SESSION_A) {
     return app.inject({
       method: "GET",
@@ -242,6 +267,8 @@ export async function setup(
     startedPayment,
     payByCard,
     callback,
+    retryPayment,
+    latestPayment,
     getBooking,
   };
 }
